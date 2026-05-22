@@ -1,8 +1,4 @@
-/*
-      -  RENTBOT BY GAARA
-      -  2349060631426
-*/
-
+const Baileys = require("@whiskeysockets/baileys");
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -17,12 +13,13 @@ const {
     jidDecode,
     proto,
     Browsers,
-     getContentType,
+    getContentType,
     getAggregateVotesInPollMessage,
     PHONENUMBER_MCC
-} = require("@whiskeysockets/baileys");
-// Add this line to correctly pull the store function:
-const { makeInMemoryStore } = require("@whiskeysockets/baileys/lib/Utils");
+} = Baileys;
+
+// Safely handles both older layouts and nested ESM/CJS exports
+const makeInMemoryStore = Baileys.makeInMemoryStore || Baileys.default?.makeInMemoryStore || require("@whiskeysockets/baileys/lib/Store")?.makeInMemoryStore;
 const NodeCache = require("node-cache");
 const FileType = require('file-type')
 const _ = require('lodash')
