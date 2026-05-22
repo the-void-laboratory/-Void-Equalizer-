@@ -5,34 +5,32 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// Unifies BOTH the root exports and the .default exports into one single object
-const baileysModule = Object.assign({}, baileys, baileys.default || {});
+// Unpack root exports or fallback default wrappers cleanly
+const bMod = baileys.default || baileys;
 
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    DisconnectReason,
-    generateForwardMessageContent,
-    prepareWAMessageMedia,
-    generateWAMessageFromContent,
-    generateMessageID,
-    downloadContentFromMessage,
-    makeCacheableSignalKeyStore,
-    jidDecode,
-    proto,
-    Browsers,
-    getContentType,
-    getAggregateVotesInPollMessage,
-    PHONENUMBER_MCC
-} = baileysModule;
+const makeWASocket = bMod.default || bMod.makeWASocket || baileys.makeWASocket;
+const useMultiFileAuthState = bMod.useMultiFileAuthState || baileys.useMultiFileAuthState;
+const DisconnectReason = bMod.DisconnectReason || baileys.DisconnectReason;
+const generateForwardMessageContent = bMod.generateForwardMessageContent || baileys.generateForwardMessageContent;
+const prepareWAMessageMedia = bMod.prepareWAMessageMedia || baileys.prepareWAMessageMedia;
+const generateWAMessageFromContent = bMod.generateWAMessageFromContent || baileys.generateWAMessageFromContent;
+const generateMessageID = bMod.generateMessageID || baileys.generateMessageID;
+const downloadContentFromMessage = bMod.downloadContentFromMessage || baileys.downloadContentFromMessage;
+const makeCacheableSignalKeyStore = bMod.makeCacheableSignalKeyStore || baileys.makeCacheableSignalKeyStore;
+const jidDecode = bMod.jidDecode || baileys.jidDecode;
+const proto = bMod.proto || baileys.proto;
+const Browsers = bMod.Browsers || baileys.Browsers;
+const getContentType = bMod.getContentType || baileys.getContentType;
+const getAggregateVotesInPollMessage = bMod.getAggregateVotesInPollMessage || baileys.getAggregateVotesInPollMessage;
+const PHONENUMBER_MCC = bMod.PHONENUMBER_MCC || baileys.PHONENUMBER_MCC;
 
-// Safely map fetchLatestBaileysVersion from primary exports or deep fallback utilities
-const fetchLatestBaileysVersion = baileysModule.fetchLatestBaileysVersion || 
+// Map fetchLatestBaileysVersion safely or fall back to a working static array structure
+const fetchLatestBaileysVersion = bMod.fetchLatestBaileysVersion || baileys.fetchLatestBaileysVersion || 
     (() => { try { return require("@whiskeysockets/baileys/lib/Utils").fetchLatestBaileysVersion; } catch(e) { return null; } })() ||
     (async () => ({ version: [2, 3000, 1025190524], isLatest: true })); 
 
 // Safely get or mock the store function without breaking sub-paths
-let makeInMemoryStore = baileysModule.makeInMemoryStore;
+let makeInMemoryStore = bMod.makeInMemoryStore || baileys.makeInMemoryStore;
 
 if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
     makeInMemoryStore = () => ({
