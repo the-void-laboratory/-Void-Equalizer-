@@ -24,7 +24,7 @@ const {
 } = require("@whiskeysockets/baileys");
 
 // ADD THIS LINE RIGHT BELOW:
-const makeInMemoryStore = require("@whiskeysockets/baileys/lib/Store/make-in-memory-store").default || require("@whiskeysockets/baileys").makeInMemoryStore;
+// const makeInMemoryStore = require("@whiskeysockets/baileys/lib/Store/make-in-memory-store").default || require("@whiskeysockets/baileys").makeInMemoryStore;
 const NodeCache = require("node-cache");
 const FileType = require('file-type')
 const _ = require('lodash')
