@@ -1,4 +1,7 @@
+// Import the core module
 const Baileys = require("@whiskeysockets/baileys");
+
+// Extract the required components dynamically
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -18,10 +21,11 @@ const {
     PHONENUMBER_MCC
 } = Baileys;
 
-// Safely handles both older layouts and nested ESM/CJS exports
-const makeInMemoryStore = Baileys.makeInMemoryStore || Baileys.default?.makeInMemoryStore || require("@whiskeysockets/baileys/lib/Store")?.makeInMemoryStore;
-const NodeCache = require("node-cache");
-const FileType = require('file-type')
+// Dynamically extract makeInMemoryStore regardless of compiler version
+const makeInMemoryStore = Baileys.makeInMemoryStore || 
+                          Baileys.default?.makeInMemoryStore || 
+                          Object.values(Baileys).find(f => f?.name === 'makeInMemoryStore');
+
 const _ = require('lodash')
 const {
 Boom
