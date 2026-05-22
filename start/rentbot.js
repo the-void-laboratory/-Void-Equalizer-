@@ -5,23 +5,25 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// 1. Resolve core factory functions safely across hidden .default exports
-const makeWASocket = baileys.default || baileys.makeWASocket || (baileys.default && baileys.default.makeWASocket) || baileys;
+// Unpack root exports or fallback default wrappers cleanly
+const bMod = baileys.default || baileys;
 
-// 2. Target useMultiFileAuthState through explicit sub-paths or main export layers
-let useMultiFileAuthState;
-try {
-    useMultiFileAuthState = baileys.useMultiFileAuthState || (baileys.default && baileys.default.useMultiFileAuthState) || require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState;
-} catch (e) {
+const makeWASocket = bMod.default || bMod.makeWASocket || baileys.makeWASocket;
+
+// Safely handle useMultiFileAuthState from main export or direct internal file submodule
+let useMultiFileAuthState = bMod.useMultiFileAuthState || baileys.useMultiFileAuthState;
+if (!useMultiFileAuthState) {
     try {
-        useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
-    } catch (err) {
-        useMultiFileAuthState = baileys.useMultiFileAuthState;
+        useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState;
+    } catch (e) {
+        try {
+            useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
+        } catch (err) {
+            console.log("Warning: using ultimate fallback for useMultiFileAuthState");
+        }
     }
 }
 
-// 3. Extract the remaining structural constants safely
-const bMod = baileys.default || baileys;
 const DisconnectReason = bMod.DisconnectReason || baileys.DisconnectReason;
 const generateForwardMessageContent = bMod.generateForwardMessageContent || baileys.generateForwardMessageContent;
 const prepareWAMessageMedia = bMod.prepareWAMessageMedia || baileys.prepareWAMessageMedia;
@@ -36,12 +38,14 @@ const getContentType = bMod.getContentType || baileys.getContentType;
 const getAggregateVotesInPollMessage = bMod.getAggregateVotesInPollMessage || baileys.getAggregateVotesInPollMessage;
 const PHONENUMBER_MCC = bMod.PHONENUMBER_MCC || baileys.PHONENUMBER_MCC;
 
-// 4. Safely map fetchLatestBaileysVersion 
+// Map fetchLatestBaileysVersion safely or fall back to a working static array structure
 const fetchLatestBaileysVersion = bMod.fetchLatestBaileysVersion || baileys.fetchLatestBaileysVersion || 
+    (() => { try { return require("@whiskeysockets/baileys/lib/Utils").fetchLatestBaileysVersion; } catch(e) { return null; } })() ||
     (async () => ({ version: [2, 3000, 1025190524], isLatest: true })); 
 
-// 5. Build/Restore fallback memory store wrapper
+// Safely get or mock the store function without breaking sub-paths
 let makeInMemoryStore = bMod.makeInMemoryStore || baileys.makeInMemoryStore;
+
 if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
     makeInMemoryStore = () => ({
         chats: { dict: {}, all: () => [] },
