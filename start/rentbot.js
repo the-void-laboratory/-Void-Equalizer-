@@ -2,7 +2,12 @@
       -  RENTBOT BY GAARA
       -  2349060631426
 */
+
 const baileys = require("@whiskeysockets/baileys");
+
+// Safely handle environments where everything is nested inside .default
+const baileysModule = baileys.default || baileys;
+
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -14,18 +19,16 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
-    // makeInMemoryStore,
     jidDecode,
     proto,
     Browsers,
     getContentType,
     getAggregateVotesInPollMessage,
     PHONENUMBER_MCC
-} = baileys;
+} = baileysModule;
 
-// This dynamically looks for the store, or builds a bulletproof fallback structure 
-// that prevents both path errors and TypeErrors.
-let makeInMemoryStore = baileys.makeInMemoryStore || (baileys.default && baileys.default.makeInMemoryStore);
+// Safely get or mock the store function without breaking sub-paths
+let makeInMemoryStore = baileysModule.makeInMemoryStore;
 
 if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
     makeInMemoryStore = () => ({
@@ -39,7 +42,6 @@ if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
         fetchGroupMetadata: async () => ({}),
         getChatReceivedMessages: () => [],
         bind: (ev) => {
-            // Silently swallow events so nothing breaks if the module is missing
             ev.on('chats.set', () => {});
             ev.on('messages.set', () => {});
             ev.on('messages.upsert', () => {});
@@ -49,6 +51,7 @@ if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
         readFromFile: () => {}
     });
 }
+
 const NodeCache = require("node-cache");
 const FileType = require('file-type');
 const _ = require('lodash')
