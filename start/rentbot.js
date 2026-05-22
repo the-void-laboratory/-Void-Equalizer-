@@ -5,8 +5,8 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// Safely handle environments where everything is nested inside .default
-const baileysModule = baileys.default || baileys;
+// Unifies BOTH the root exports and the .default exports into one single object
+const baileysModule = Object.assign({}, baileys, baileys.default || {});
 
 const {
     default: makeWASocket,
