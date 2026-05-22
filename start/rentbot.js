@@ -14,7 +14,6 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
-    // Removed from here to prevent the TypeError
     jidDecode,
     proto,
     Browsers,
