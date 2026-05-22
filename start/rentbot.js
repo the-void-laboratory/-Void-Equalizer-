@@ -1,7 +1,8 @@
-// Import the core module
-const Baileys = require("@whiskeysockets/baileys");
+/*
+      -  RENTBOT BY GAARA
+      -  2349060631426
+*/
 
-// Extract the required components dynamically
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -13,19 +14,16 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
+    makeInMemoryStore,
     jidDecode,
     proto,
     Browsers,
-    getContentType,
+     getContentType,
     getAggregateVotesInPollMessage,
     PHONENUMBER_MCC
-} = Baileys;
-
-// Dynamically extract makeInMemoryStore regardless of compiler version
-const makeInMemoryStore = Baileys.makeInMemoryStore || 
-                          Baileys.default?.makeInMemoryStore || 
-                          Object.values(Baileys).find(f => f?.name === 'makeInMemoryStore');
-
+} = require("@whiskeysockets/baileys");
+const NodeCache = require("node-cache");
+const FileType = require('file-type')
 const _ = require('lodash')
 const {
 Boom
