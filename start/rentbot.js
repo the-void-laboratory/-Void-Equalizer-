@@ -5,12 +5,12 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// Unpack root exports or fallback default wrappers cleanly
+// Unpack root exports cleanly
 const bMod = baileys.default || baileys;
 
 const makeWASocket = bMod.default || bMod.makeWASocket || (baileys.default && baileys.default.makeWASocket) || baileys;
 
-// Bulletproof import specifically targeting the auth file directly to eliminate TypeErrors
+// 1. Resolve useMultiFileAuthState directly from its module sub-path
 let useMultiFileAuthState;
 try {
     useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState || require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
@@ -22,6 +22,19 @@ try {
     }
 }
 
+// 2. Resolve Browsers cleanly to prevent "Cannot read properties of undefined (reading 'ubuntu')"
+let Browsers;
+try {
+    Browsers = bMod.Browsers || baileys.Browsers || require("@whiskeysockets/baileys/lib/Utils/browsers").Browsers || require("@whiskeysockets/baileys/lib/Utils").Browsers;
+} catch (e) {
+    // Ultimate mock fallback to keep the socket alive if extraction fails
+    Browsers = {
+        ubuntu: (browserName) => ["Ubuntu", browserName, "20.0.4"],
+        macOS: (browserName) => ["Mac OS", browserName, "10.15.7"],
+        windows: (browserName) => ["Windows", browserName, "10"]
+    };
+}
+
 const DisconnectReason = bMod.DisconnectReason || baileys.DisconnectReason;
 const generateForwardMessageContent = bMod.generateForwardMessageContent || baileys.generateForwardMessageContent;
 const prepareWAMessageMedia = bMod.prepareWAMessageMedia || baileys.prepareWAMessageMedia;
@@ -31,7 +44,6 @@ const downloadContentFromMessage = bMod.downloadContentFromMessage || baileys.do
 const makeCacheableSignalKeyStore = bMod.makeCacheableSignalKeyStore || baileys.makeCacheableSignalKeyStore;
 const jidDecode = bMod.jidDecode || baileys.jidDecode;
 const proto = bMod.proto || baileys.proto;
-const Browsers = bMod.Browsers || baileys.Browsers;
 const getContentType = bMod.getContentType || baileys.getContentType;
 const getAggregateVotesInPollMessage = bMod.getAggregateVotesInPollMessage || baileys.getAggregateVotesInPollMessage;
 const PHONENUMBER_MCC = bMod.PHONENUMBER_MCC || baileys.PHONENUMBER_MCC;
