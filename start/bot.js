@@ -247,13 +247,42 @@ if (pairedUsersFromJson >= 50) {
 }
     const startpairing = require('./rentbot.js');
     await startpairing(Xreturn);
-    await sleep(4000);
 
-    const cu = fs.readFileSync('./lib2/pairing/pairing.json', 'utf-8');
-    const cuObj = JSON.parse(cu);
+    // Dynamic file watcher instead of arbitrary sleep timers
+    const pairingFilePath = './lib2/pairing/pairing.json';
+    let cuObj = null;
+    let attempts = 0;
+    const maxAttempts = 15; // Max wait window: ~15 seconds
+
+    while (attempts < maxAttempts) {
+        await sleep(1000); // Check once every second
+        attempts++;
+
+        if (fs.existsSync(pairingFilePath)) {
+            try {
+                const cu = fs.readFileSync(pairingFilePath, 'utf-8');
+                if (cu.trim()) { // Ensure file isn't empty
+                    cuObj = JSON.parse(cu);
+                    if (cuObj && cuObj.code) {
+                        break; // Successfully got the code! Exit the loop.
+                    }
+                }
+            } catch (jsonErr) {
+                // File is likely still being written to disk, continue waiting
+                console.log(`Waiting for file write layer... Attempt ${attempts}`);
+            }
+        }
+    }
+
+    if (!cuObj || !cuObj.code) {
+        throw new Error("Timeout waiting for WhatsApp to generate a pairing code.");
+    }
+
+    // Clean up the pairing file immediately so next requests don't read old codes
+    try { fs.unlinkSync(pairingFilePath); } catch (e) {}
 
     ctx.reply(
-      `\n*CODE*: ${target}\n\nhttps://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp${cuObj.code}\n\nInstructions:\n1. Open WhatsApp\n2. Go to Linked Devices\n3. Tap Link Device\n4. Enter the code`,
+      `\n*CODE*: ${cuObj.code}\n\nhttps://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=${cuObj.code}\n\nInstructions:\n1. Open WhatsApp\n2. Go to Linked Devices\n3. Tap Link Device\n4. Enter the code`,
       {
         parse_mode: 'Markdown',
         disable_web_page_preview: true,
