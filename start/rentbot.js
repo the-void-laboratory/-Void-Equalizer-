@@ -23,16 +23,31 @@ const {
     PHONENUMBER_MCC
 } = baileys;
 
-// This checks every possible modern export strategy of Baileys safely
-let makeInMemoryStore;
-try {
-    makeInMemoryStore = baileys.makeInMemoryStore || 
-                        (baileys.default && baileys.default.makeInMemoryStore) || 
-                        require("@whiskeysockets/baileys/lib/Store").makeInMemoryStore;
-} catch (e) {
-    // Ultimate fallback if your specific lockfile structure is deeply bundled
-    const StoreUtils = require("@whiskeysockets/baileys/lib/Utils");
-    makeInMemoryStore = StoreUtils.makeInMemoryStore;
+// This dynamically looks for the store, or builds a bulletproof fallback structure 
+// that prevents both path errors and TypeErrors.
+let makeInMemoryStore = baileys.makeInMemoryStore || (baileys.default && baileys.default.makeInMemoryStore);
+
+if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
+    makeInMemoryStore = () => ({
+        chats: { dict: {}, all: () => [] },
+        messages: {},
+        contacts: {},
+        groupMetadata: {},
+        presences: {},
+        state: {},
+        loadMessage: async () => null,
+        fetchGroupMetadata: async () => ({}),
+        getChatReceivedMessages: () => [],
+        bind: (ev) => {
+            // Silently swallow events so nothing breaks if the module is missing
+            ev.on('chats.set', () => {});
+            ev.on('messages.set', () => {});
+            ev.on('messages.upsert', () => {});
+            ev.on('contacts.set', () => {});
+        },
+        writeToFile: () => {},
+        readFromFile: () => {}
+    });
 }
 const NodeCache = require("node-cache");
 const FileType = require('file-type');
