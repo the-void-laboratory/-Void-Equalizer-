@@ -23,6 +23,7 @@ const {
     PHONENUMBER_MCC
 } = baileys;
 
+const { makeInMemoryStore } = require("@whiskeysockets/baileys/lib/Store");
 const NodeCache = require("node-cache");
 const FileType = require('file-type');
 const _ = require('lodash')
