@@ -3,34 +3,29 @@
       -  2349060631426
 */
 
-const baileys = require("@whiskeysockets/baileys");
+// Directly import the factory functions from Baileys internal compiled sub-modules
+let makeWASocket;
+try {
+    const socketModule = require("@whiskeysockets/baileys/lib/Socket");
+    makeWASocket = socketModule.default || socketModule.makeWASocket || socketModule;
+} catch (e) {
+    const baileys = require("@whiskeysockets/baileys");
+    makeWASocket = baileys.makeWASocket || (baileys.default && baileys.default.makeWASocket) || baileys.default || baileys;
+}
 
-// Direct lookups across Baileys standard exports
-let makeWASocket = baileys.makeWASocket || 
-                   (baileys.default && baileys.default.makeWASocket) || 
-                   baileys.default || 
-                   baileys;
-
-// If it's still an object and contains a default property, extract it down one layer
 if (typeof makeWASocket !== 'function' && makeWASocket.default) {
     makeWASocket = makeWASocket.default;
 }
 
-// 1. Resolve useMultiFileAuthState through comprehensive deep module mapping
+// Resolve useMultiFileAuthState through direct file path lookups
 let useMultiFileAuthState;
 try {
-    if (typeof baileys.useMultiFileAuthState === 'function') {
-        useMultiFileAuthState = baileys.useMultiFileAuthState;
-    } else if (baileys.default && typeof baileys.default.useMultiFileAuthState === 'function') {
-        useMultiFileAuthState = baileys.default.useMultiFileAuthState;
-    } else {
-        useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState 
-            || require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
-    }
+    useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState 
+        || require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
 } catch (e) {
     try {
-        const authenticationModule = require("@whiskeysockets/baileys/lib/Utils/index");
-        useMultiFileAuthState = authenticationModule.useMultiFileAuthState;
+        const baileys = require("@whiskeysockets/baileys");
+        useMultiFileAuthState = baileys.useMultiFileAuthState || (baileys.default && baileys.default.useMultiFileAuthState);
     } catch (err) {
         useMultiFileAuthState = async (folder) => {
             const fs = require('fs');
@@ -46,18 +41,21 @@ try {
     }
 }
 
-// 2. Resolve Browsers cleanly
+// Resolve Browsers module directly
 let Browsers;
 try {
-    Browsers = baileys.Browsers || (baileys.default && baileys.default.Browsers) || require("@whiskeysockets/baileys/lib/Utils/browsers").Browsers || require("@whiskeysockets/baileys/lib/Utils").Browsers;
+    Browsers = require("@whiskeysockets/baileys/lib/Utils/browsers").Browsers 
+        || require("@whiskeysockets/baileys/lib/Utils").Browsers;
 } catch (e) {
-    Browsers = {
+    const baileys = require("@whiskeysockets/baileys");
+    Browsers = baileys.Browsers || (baileys.default && baileys.default.Browsers) || {
         ubuntu: (browserName) => ["Ubuntu", browserName, "20.0.4"],
         macOS: (browserName) => ["Mac OS", browserName, "10.15.7"],
         windows: (browserName) => ["Windows", browserName, "10"]
     };
 }
 
+const baileys = require("@whiskeysockets/baileys");
 const bMod = baileys.default || baileys;
 const DisconnectReason = bMod.DisconnectReason || baileys.DisconnectReason;
 const generateForwardMessageContent = bMod.generateForwardMessageContent || baileys.generateForwardMessageContent;
@@ -72,14 +70,11 @@ const getContentType = bMod.getContentType || baileys.getContentType;
 const getAggregateVotesInPollMessage = bMod.getAggregateVotesInPollMessage || baileys.getAggregateVotesInPollMessage;
 const PHONENUMBER_MCC = bMod.PHONENUMBER_MCC || baileys.PHONENUMBER_MCC;
 
-// Map fetchLatestBaileysVersion safely or fall back to a working static array structure
 const fetchLatestBaileysVersion = bMod.fetchLatestBaileysVersion || baileys.fetchLatestBaileysVersion || 
     (() => { try { return require("@whiskeysockets/baileys/lib/Utils").fetchLatestBaileysVersion; } catch(e) { return null; } })() ||
     (async () => ({ version: [2, 3000, 1025190524], isLatest: true })); 
 
-// Safely get or mock the store function without breaking sub-paths
 let makeInMemoryStore = bMod.makeInMemoryStore || baileys.makeInMemoryStore;
-
 if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
     makeInMemoryStore = () => ({
         chats: { dict: {}, all: () => [] },
