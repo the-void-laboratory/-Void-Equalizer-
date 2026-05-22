@@ -154,7 +154,7 @@ bot.action('start_bot', async (ctx) => {
   const buttons = Markup.inlineKeyboard([
     [
       Markup.button.url('♘ ᴏᴡɴᴇʀ ♘', 'https://t.me/certifiedloner_16'),
-      Markup.button.url('ᴅᴇᴠ ᴄʜᴀɴɴᴇʟ', 'https://t.me/void_tech')
+      Markup.button.url('ᴅᴇᴠ ᴄʜᴀɴɴᴇʟ', 'https://t.me/thevoidslab')
       
     ]
   ]);
@@ -178,7 +178,7 @@ bot.command('pair', async (ctx) => {
   try {
     const userId = ctx.from.id;
 
-    const channelUsernames = ['@void_tech']; // Your required channels
+    const channelUsernames = ['@thevoidslab']; // Your required channels
     let joinedAllChannels = true;
     for (const channel of channelUsernames) {
       try {
@@ -200,7 +200,7 @@ bot.command('pair', async (ctx) => {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: 'Official Tg Channel', url: 'https://t.me/void_tech' }],
+              [{ text: 'Official Tg Channel', url: 'https://t.me/thevoidslab' }],
               [{ text: 'Done', callback_data: 'check_join' }]
             ]
           }
@@ -270,7 +270,7 @@ if (pairedUsersFromJson >= 50) {
   }
 });
 bot.action('check_join', async (ctx) => {
-  const channelUsername = '@void_tech';
+  const channelUsername = '@thevoidslab';
   const userId = ctx.from.id;
 
   const member = await ctx.telegram.getChatMember(channelUsername, userId);
