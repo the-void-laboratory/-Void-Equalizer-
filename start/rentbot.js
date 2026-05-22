@@ -14,7 +14,7 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
-    makeInMemoryStore,
+    // Removed from here to prevent the TypeError
     jidDecode,
     proto,
     Browsers,
@@ -23,10 +23,11 @@ const {
     PHONENUMBER_MCC
 } = require("@whiskeysockets/baileys");
 
-// ADD THIS LINE RIGHT BELOW:
-// const makeInMemoryStore = require("@whiskeysockets/baileys/lib/Store/make-in-memory-store").default || require("@whiskeysockets/baileys").makeInMemoryStore;
+// Import it cleanly from its dedicated Baileys submodule path:
+const makeInMemoryStore = require("@whiskeysockets/baileys/lib/Store/make-in-memory-store").default || require("@whiskeysockets/baileys").makeInMemoryStore;
+
 const NodeCache = require("node-cache");
-const FileType = require('file-type')
+const FileType = require('file-type');
 const _ = require('lodash')
 const {
 Boom
