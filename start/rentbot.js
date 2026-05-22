@@ -23,7 +23,17 @@ const {
     PHONENUMBER_MCC
 } = baileys;
 
-const makeInMemoryStore = baileys.makeInMemoryStore || (baileys.default && baileys.default.makeInMemoryStore);
+// This checks every possible modern export strategy of Baileys safely
+let makeInMemoryStore;
+try {
+    makeInMemoryStore = baileys.makeInMemoryStore || 
+                        (baileys.default && baileys.default.makeInMemoryStore) || 
+                        require("@whiskeysockets/baileys/lib/Store").makeInMemoryStore;
+} catch (e) {
+    // Ultimate fallback if your specific lockfile structure is deeply bundled
+    const StoreUtils = require("@whiskeysockets/baileys/lib/Utils");
+    makeInMemoryStore = StoreUtils.makeInMemoryStore;
+}
 const NodeCache = require("node-cache");
 const FileType = require('file-type');
 const _ = require('lodash')
