@@ -2,7 +2,7 @@
       -  RENTBOT BY GAARA
       -  2349060631426
 */
-
+const baileys = require("@whiskeysockets/baileys");
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -21,7 +21,7 @@ const {
     getContentType,
     getAggregateVotesInPollMessage,
     PHONENUMBER_MCC
-} = require("@whiskeysockets/baileys");
+} = baileys;
 
 const NodeCache = require("node-cache");
 const FileType = require('file-type');
