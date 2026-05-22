@@ -8,25 +8,29 @@ const baileys = require("@whiskeysockets/baileys");
 // Unpack root exports cleanly
 const bMod = baileys.default || baileys;
 
-// Bulletproof makeWASocket factory extraction targeting the direct core sub-file path
+// Bulletproof makeWASocket factory extraction targeting both direct and sub-defaults
 let makeWASocket;
 try {
-    if (typeof bMod === 'function') {
+    if (typeof baileys === 'function') {
+        makeWASocket = baileys;
+    } else if (typeof bMod === 'function') {
         makeWASocket = bMod;
-    } else if (typeof bMod.default === 'function') {
-        makeWASocket = bMod.default;
-    } else if (typeof bMod.makeWASocket === 'function') {
-        makeWASocket = bMod.makeWASocket;
     } else if (typeof baileys.makeWASocket === 'function') {
         makeWASocket = baileys.makeWASocket;
+    } else if (typeof bMod.makeWASocket === 'function') {
+        makeWASocket = bMod.makeWASocket;
+    } else if (typeof baileys.default === 'function') {
+        makeWASocket = baileys.default;
+    } else if (bMod.default && typeof bMod.default.makeWASocket === 'function') {
+        makeWASocket = bMod.default.makeWASocket;
     } else {
-        // Fallback targeting the exact core module implementation file directly
-        makeWASocket = require("@whiskeysockets/baileys/lib/Defaults/index").default 
-            || require("@whiskeysockets/baileys/lib/Socket").default 
-            || require("@whiskeysockets/baileys/lib/Socket/index").default;
+        // Direct file-system traversal to bypass any broken bundler wrappers
+        const socketPath = require("@whiskeysockets/baileys/lib/Socket");
+        makeWASocket = socketPath.default || socketPath.makeWASocket || socketPath;
     }
 } catch (e) {
-    makeWASocket = bMod.makeWASocket || baileys.makeWASocket || bMod.default || baileys;
+    // Ultimate fallback if sub-paths are altered
+    makeWASocket = baileys.makeWASocket || bMod.makeWASocket || baileys;
 }
 
 // 1. Resolve useMultiFileAuthState through comprehensive deep module mapping
