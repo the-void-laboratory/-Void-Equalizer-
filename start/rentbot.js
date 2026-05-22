@@ -5,22 +5,20 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// Unpack root exports or fallback default wrappers cleanly
+// Handle package entry point layers safely
 const bMod = baileys.default || baileys;
 
-const makeWASocket = bMod.default || bMod.makeWASocket || baileys.makeWASocket;
+const makeWASocket = bMod.default || bMod.makeWASocket || (baileys.default && baileys.default.makeWASocket) || baileys;
 
-// Safely handle useMultiFileAuthState from main export or direct internal file submodule
-let useMultiFileAuthState = bMod.useMultiFileAuthState || baileys.useMultiFileAuthState;
-if (!useMultiFileAuthState) {
+// Bulletproof import specifically targeting the auth file directly to eliminate TypeErrors
+let useMultiFileAuthState;
+try {
+    useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState || require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
+} catch (e) {
     try {
-        useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState;
-    } catch (e) {
-        try {
-            useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
-        } catch (err) {
-            console.log("Warning: using ultimate fallback for useMultiFileAuthState");
-        }
+        useMultiFileAuthState = bMod.useMultiFileAuthState || baileys.useMultiFileAuthState;
+    } catch (err) {
+        throw new Error("Critical: Could not resolve useMultiFileAuthState from Baileys module.");
     }
 }
 
