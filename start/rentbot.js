@@ -14,14 +14,17 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
-    makeInMemoryStore,
+    // makeInMemoryStore, <--- REMOVE THIS LINE
     jidDecode,
     proto,
     Browsers,
-     getContentType,
+    getContentType,
     getAggregateVotesInPollMessage,
     PHONENUMBER_MCC
 } = require("@whiskeysockets/baileys");
+
+// ADD THIS LINE RIGHT BELOW:
+const makeInMemoryStore = require("@whiskeysockets/baileys/lib/Store/make-in-memory-store").default || require("@whiskeysockets/baileys").makeInMemoryStore;
 const NodeCache = require("node-cache");
 const FileType = require('file-type')
 const _ = require('lodash')
@@ -487,7 +490,7 @@ m.quoted.download = () => troy.downloadMediaMessage(m.quoted)
 if (m.msg.url) m.download = () => troy.downloadMediaMessage(m.msg)
 m.text = m.msg.text || m.msg.caption || m.message.conversation || m.msg.contentText || m.msg.selectedDisplayText || m.msg.title || ''
 m.reply = (text, chatId = m.chat, options = {}) => Buffer.isBuffer(text) ? troy.sendMedia(chatId, text, 'file', '', m, { ...options }) : troy.sendText(chatId, text, m, { ...options })
-m.copy = () => exports.smsg(conn, M.fromObject(M.toObject(m)))
+m.copy = () => exports.smsg(troy, M.fromObject(M.toObject(m)))
 m.copyNForward = (jid = m.chat, forceForward = false, options = {}) => troy.copyNForward(jid, m, forceForward, options)
 
 return m
