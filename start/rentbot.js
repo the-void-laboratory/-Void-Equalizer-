@@ -14,7 +14,7 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
-    makeInMemoryStore,
+    // makeInMemoryStore,
     jidDecode,
     proto,
     Browsers,
