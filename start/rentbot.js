@@ -14,6 +14,7 @@ const {
     generateMessageID,
     downloadContentFromMessage,
     makeCacheableSignalKeyStore,
+    makeInMemoryStore,
     jidDecode,
     proto,
     Browsers,
@@ -21,9 +22,6 @@ const {
     getAggregateVotesInPollMessage,
     PHONENUMBER_MCC
 } = require("@whiskeysockets/baileys");
-
-// Import it cleanly from its dedicated Baileys submodule path:
-const makeInMemoryStore = require("@whiskeysockets/baileys/lib/Store/make-in-memory-store").default || require("@whiskeysockets/baileys").makeInMemoryStore;
 
 const NodeCache = require("node-cache");
 const FileType = require('file-type');
