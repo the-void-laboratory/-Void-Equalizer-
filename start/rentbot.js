@@ -8,13 +8,25 @@ const baileys = require("@whiskeysockets/baileys");
 // Unpack root exports cleanly
 const bMod = baileys.default || baileys;
 
-// Bulletproof makeWASocket assignment that checks all module layers
-let makeWASocket = typeof baileys === 'function' ? baileys : null;
-if (!makeWASocket) {
-    makeWASocket = bMod.makeWASocket || baileys.makeWASocket || bMod.default || (baileys.default && baileys.default.makeWASocket);
-}
-if (typeof makeWASocket !== 'function' && bMod.default) {
-    makeWASocket = bMod.default.makeWASocket || bMod.default;
+// Bulletproof makeWASocket factory extraction targeting the direct core sub-file path
+let makeWASocket;
+try {
+    if (typeof bMod === 'function') {
+        makeWASocket = bMod;
+    } else if (typeof bMod.default === 'function') {
+        makeWASocket = bMod.default;
+    } else if (typeof bMod.makeWASocket === 'function') {
+        makeWASocket = bMod.makeWASocket;
+    } else if (typeof baileys.makeWASocket === 'function') {
+        makeWASocket = baileys.makeWASocket;
+    } else {
+        // Fallback targeting the exact core module implementation file directly
+        makeWASocket = require("@whiskeysockets/baileys/lib/Defaults/index").default 
+            || require("@whiskeysockets/baileys/lib/Socket").default 
+            || require("@whiskeysockets/baileys/lib/Socket/index").default;
+    }
+} catch (e) {
+    makeWASocket = bMod.makeWASocket || baileys.makeWASocket || bMod.default || baileys;
 }
 
 // 1. Resolve useMultiFileAuthState through comprehensive deep module mapping
