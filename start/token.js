@@ -1,4 +1,4 @@
 module.exports = {
-  BOT_TOKEN: '8937576130:AAEK-88PoLM2kuPZU35JADwx_u-OioE1vf0',  
+  BOT_TOKEN: '8937576130:AAFTNB-jSQeMN7m6mWoxsV3De9Zk6XipXgY',  
   startupPassword: 'Void'
 };
