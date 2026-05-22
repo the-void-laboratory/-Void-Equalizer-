@@ -5,41 +5,24 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// Unpack root exports cleanly
-const bMod = baileys.default || baileys;
+// Direct lookups across Baileys standard exports
+let makeWASocket = baileys.makeWASocket || 
+                   (baileys.default && baileys.default.makeWASocket) || 
+                   baileys.default || 
+                   baileys;
 
-// Bulletproof makeWASocket factory extraction targeting both direct and sub-defaults
-let makeWASocket;
-try {
-    if (typeof baileys === 'function') {
-        makeWASocket = baileys;
-    } else if (typeof bMod === 'function') {
-        makeWASocket = bMod;
-    } else if (typeof baileys.makeWASocket === 'function') {
-        makeWASocket = baileys.makeWASocket;
-    } else if (typeof bMod.makeWASocket === 'function') {
-        makeWASocket = bMod.makeWASocket;
-    } else if (typeof baileys.default === 'function') {
-        makeWASocket = baileys.default;
-    } else if (bMod.default && typeof bMod.default.makeWASocket === 'function') {
-        makeWASocket = bMod.default.makeWASocket;
-    } else {
-        // Direct file-system traversal to bypass any broken bundler wrappers
-        const socketPath = require("@whiskeysockets/baileys/lib/Socket");
-        makeWASocket = socketPath.default || socketPath.makeWASocket || socketPath;
-    }
-} catch (e) {
-    // Ultimate fallback if sub-paths are altered
-    makeWASocket = baileys.makeWASocket || bMod.makeWASocket || baileys;
+// If it's still an object and contains a default property, extract it down one layer
+if (typeof makeWASocket !== 'function' && makeWASocket.default) {
+    makeWASocket = makeWASocket.default;
 }
 
 // 1. Resolve useMultiFileAuthState through comprehensive deep module mapping
 let useMultiFileAuthState;
 try {
-    if (typeof bMod.useMultiFileAuthState === 'function') {
-        useMultiFileAuthState = bMod.useMultiFileAuthState;
-    } else if (typeof baileys.useMultiFileAuthState === 'function') {
+    if (typeof baileys.useMultiFileAuthState === 'function') {
         useMultiFileAuthState = baileys.useMultiFileAuthState;
+    } else if (baileys.default && typeof baileys.default.useMultiFileAuthState === 'function') {
+        useMultiFileAuthState = baileys.default.useMultiFileAuthState;
     } else {
         useMultiFileAuthState = require("@whiskeysockets/baileys/lib/Utils/auth-utils").useMultiFileAuthState 
             || require("@whiskeysockets/baileys/lib/Utils").useMultiFileAuthState;
@@ -63,10 +46,10 @@ try {
     }
 }
 
-// 2. Resolve Browsers cleanly to prevent "Cannot read properties of undefined (reading 'ubuntu')"
+// 2. Resolve Browsers cleanly
 let Browsers;
 try {
-    Browsers = bMod.Browsers || baileys.Browsers || require("@whiskeysockets/baileys/lib/Utils/browsers").Browsers || require("@whiskeysockets/baileys/lib/Utils").Browsers;
+    Browsers = baileys.Browsers || (baileys.default && baileys.default.Browsers) || require("@whiskeysockets/baileys/lib/Utils/browsers").Browsers || require("@whiskeysockets/baileys/lib/Utils").Browsers;
 } catch (e) {
     Browsers = {
         ubuntu: (browserName) => ["Ubuntu", browserName, "20.0.4"],
@@ -75,6 +58,7 @@ try {
     };
 }
 
+const bMod = baileys.default || baileys;
 const DisconnectReason = bMod.DisconnectReason || baileys.DisconnectReason;
 const generateForwardMessageContent = bMod.generateForwardMessageContent || baileys.generateForwardMessageContent;
 const prepareWAMessageMedia = bMod.prepareWAMessageMedia || baileys.prepareWAMessageMedia;
