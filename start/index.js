@@ -25,12 +25,17 @@ console.log(figlet.textSync('RADIATE', {
   verticalLayout: 'default'
 }));
 
-// If already authenticated, launch directly
-if (isAuthenticated()) {
+// Check if running on a cloud platform like Railway
+const isCloudEnvironment = process.env.RAILWAY_ENVIRONMENT || process.env.PORT;
+
+if (isCloudEnvironment) {
+  console.log(chalk.green('Cloud environment detected. Automating startup...'));
+  launchBot();
+} else if (isAuthenticated()) {
   console.log(chalk.green('Welcome back! Skipping password...'));
   launchBot();
 } else {
-  // Prompt for password
+  // Prompt for password (Local machine only)
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
