@@ -5,14 +5,13 @@
 
 const baileys = require("@whiskeysockets/baileys");
 
-// Safely handle environments where everything is nested inside .default
+// Dynamically unpacks common alternative bundle configurations (.default nested exports)
 const baileysModule = baileys.default || baileys;
 
 const {
     default: makeWASocket,
     useMultiFileAuthState,
     DisconnectReason,
-    fetchLatestBaileysVersion,
     generateForwardMessageContent,
     prepareWAMessageMedia,
     generateWAMessageFromContent,
@@ -27,7 +26,12 @@ const {
     PHONENUMBER_MCC
 } = baileysModule;
 
-// Safely get or mock the store function without breaking sub-paths
+// Safely map fetchLatestBaileysVersion from primary exports or deep fallback utilities
+const fetchLatestBaileysVersion = baileysModule.fetchLatestBaileysVersion || 
+    (require("@whiskeysockets/baileys/lib/Utils") ? require("@whiskeysockets/baileys/lib/Utils").fetchLatestBaileysVersion : null) ||
+    (async () => ({ version: [2, 3000, 1025190524], isLatest: true })); // Safe default fallback block if deeply minified
+
+// Dynamic fail-safe mapping for the Memory Store engine to avoid folder-path errors completely
 let makeInMemoryStore = baileysModule.makeInMemoryStore;
 
 if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
@@ -53,11 +57,9 @@ if (!makeInMemoryStore || typeof makeInMemoryStore !== 'function') {
 }
 
 const NodeCache = require("node-cache");
-const FileType = require('file-type');
+const FileType = require('file-type')
 const _ = require('lodash')
-const {
-Boom
-} = require('@hapi/boom')
+const { Boom } = require('@hapi/boom')
 const PhoneNumber = require('awesome-phonenumber')
 let phoneNumber = "2348109443976";
 const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code");
@@ -67,9 +69,11 @@ const pino = require('pino')
 const fs = require('fs')
 const path = require('path')
 const chalk = require('chalk')
-const {  isUrl, generateMessageTag, getBuffer, getSizeMedia, fetchJson, sleep } = require('../system/storage.js');
+const { isUrl, generateMessageTag, getBuffer, getSizeMedia, fetchJson, sleep } = require('../system/storage.js');
 const { imageToWebp, videoToWebp, writeExifImg, writeExifVid, addExif } = require('../system/exif.js');
 const rl = readline.createInterface({input: process.stdin,output: process.stdout});
+
+// Instantiates the store constructor successfully now
 let store = makeInMemoryStore({logger: pino().child({level: 'silent',stream: 'store'})});
 let msgRetryCounterCache;
 const autoLoadPairs = async () => {
