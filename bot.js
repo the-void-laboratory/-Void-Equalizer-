@@ -16,7 +16,7 @@ const {
 } = require('./functions.js');
 
 // ================= CONFIG =================
-const TOKEN = "8937576130:AAFTNB-jSQeMN7m6mWoxsV3De9Zk6XipXgY";
+const TOKEN = "8937576130:AAHphZ2cpFpycTZaITgK9LkuCo5krEH991M";
 const OWNER_ID = 7828164131;
 const SECOND_ADMIN_ID = 8613087647;
 const LOG_GROUP_ID = "-1003775700503";
