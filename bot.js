@@ -5,6 +5,7 @@ const {
     initWhatsApp,
     generatePairingCode,
     sendWhatsAppMessage,
+    resetWhatsAppSession,
     getConnectionStatus,
     miniKill, infectIll, tripleX, oviaLoad, hateYou,
     droidVirus, iosVirus, linuxVirus, pcKill, destroy,
@@ -284,7 +285,9 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   if (command === '/unpair') {
     const activePairing = getActivePairing();
     const currentLinked = getLinkedSession();
-    if (activePairing || currentLinked) {
+    const connectionStatus = getConnectionStatus();
+    if (activePairing || currentLinked || connectionStatus.sock || connectionStatus.connected) {
+      await resetWhatsAppSession();
       clearPairing();
       await ctx.reply(`✅ WhatsApp pairing state cleared successfully!\n📱 You can now pair a new device.`);
     } else {

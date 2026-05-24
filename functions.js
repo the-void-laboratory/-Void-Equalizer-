@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
@@ -11,6 +11,101 @@ let isConnected = false;
 let pairingCode = null;
 let pairingTimeout = null;
 let pairedUsers = new Map();
+let initPromise = null;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let lastConnectionError = null;
+
+const AUTH_DIR = path.join(__dirname, 'auth');
+const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
+const SOCKET_BOOT_DELAY_MS = 5000;
+const MESSAGE_CONNECT_TIMEOUT_MS = 15000;
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function clearPairingTimer() {
+  if (pairingTimeout) {
+    clearTimeout(pairingTimeout);
+    pairingTimeout = null;
+  }
+}
+
+function clearReconnectTimer() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function setPairingCode(code) {
+  pairingCode = code;
+  clearPairingTimer();
+  pairingTimeout = setTimeout(() => {
+    pairingCode = null;
+    pairingTimeout = null;
+  }, PAIRING_CODE_TTL_MS);
+}
+
+async function waitForSocketBoot(activeSock) {
+  if (!activeSock?.waitForConnectionUpdate) {
+    await delay(SOCKET_BOOT_DELAY_MS);
+    return;
+  }
+
+  try {
+    await activeSock.waitForConnectionUpdate(
+      update => Boolean(update.connection || update.qr || update.isNewLogin),
+      SOCKET_BOOT_DELAY_MS
+    );
+  } catch {}
+
+  await delay(1500);
+}
+
+async function waitForOpenConnection(activeSock, timeoutMs = MESSAGE_CONNECT_TIMEOUT_MS) {
+  if (isConnected) return true;
+  if (!activeSock?.waitForConnectionUpdate) return false;
+
+  try {
+    await activeSock.waitForConnectionUpdate(update => update.connection === 'open', timeoutMs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer || initPromise) return;
+
+  const delayMs = Math.min(15000, 2000 * Math.max(1, reconnectAttempts + 1));
+  reconnectAttempts += 1;
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    initWhatsApp().catch(error => {
+      lastConnectionError = error.message;
+      console.error('WhatsApp reconnect failed:', error.message);
+    });
+  }, delayMs);
+}
+
+async function closeSocket() {
+  if (!sock) return;
+
+  const currentSock = sock;
+  sock = null;
+
+  try {
+    currentSock.ev.removeAllListeners('connection.update');
+    currentSock.ev.removeAllListeners('creds.update');
+  } catch {}
+
+  try {
+    currentSock.ws?.close?.();
+  } catch {}
+}
 
 // ================= PROXY CONFIGURATION =================
 const proxies = [
@@ -690,70 +785,136 @@ async function cloneBot(target) {
 // ================= WHATSAPP PAIRING FUNCTIONS =================
 
 async function initWhatsApp() {
-  const authDir = path.join(__dirname, 'auth');
-  if (!fs.existsSync(authDir)) fs.mkdirSync(authDir);
-  
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
-  
-  sock = makeWASocket({
-    printQRInTerminal: false,
-    auth: state,
-    logger: require('pino')({ level: 'silent' })
-  });
-  
-  sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
-    
-    if (qr && !pairingCode) {
-      QRCode.generate(qr, { small: true });
-      console.log('📱 Scan QR Code with WhatsApp');
-    }
-    
-    if (connection === 'open') {
-      isConnected = true;
-      console.log('✅ WhatsApp Connected Successfully!');
-      if (pairingTimeout) clearTimeout(pairingTimeout);
-    }
-    
-    if (connection === 'close') {
-      isConnected = false;
-      const reason = lastDisconnect?.error?.output?.statusCode;
-      if (reason !== DisconnectReason.loggedOut) {
-        console.log('⚠️ Connection lost, reconnecting...');
-        initWhatsApp();
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR);
+
+    await closeSocket();
+    clearReconnectTimer();
+
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+    const activeSock = makeWASocket({
+      printQRInTerminal: false,
+      browser: Browsers.appropriate('Void-Equalizer'),
+      markOnlineOnConnect: false,
+      auth: state,
+      logger: require('pino')({ level: 'silent' })
+    });
+
+    sock = activeSock;
+    isConnected = false;
+
+    activeSock.ev.on('connection.update', (update) => {
+      if (sock !== activeSock) return;
+
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr && !pairingCode) {
+        QRCode.generate(qr, { small: true });
+        console.log('📱 Scan QR Code with WhatsApp');
       }
-    }
-  });
-  
-  sock.ev.on('creds.update', saveCreds);
-  return sock;
+
+      if (connection === 'open') {
+        isConnected = true;
+        lastConnectionError = null;
+        reconnectAttempts = 0;
+        clearReconnectTimer();
+        clearPairingTimer();
+        pairingCode = null;
+        console.log('✅ WhatsApp Connected Successfully!');
+        return;
+      }
+
+      if (connection === 'close') {
+        isConnected = false;
+        const reason = lastDisconnect?.error?.output?.statusCode;
+        lastConnectionError = lastDisconnect?.error?.message || 'Connection closed';
+
+        if (reason !== DisconnectReason.loggedOut) {
+          console.log(`⚠️ Connection lost, reconnecting... (${lastConnectionError})`);
+          scheduleReconnect();
+        } else {
+          console.log('❌ WhatsApp session logged out. Generate a new pairing code to relink.');
+          clearPairingTimer();
+          pairingCode = null;
+        }
+      }
+    });
+
+    activeSock.ev.on('creds.update', async () => {
+      try {
+        await saveCreds();
+      } catch (error) {
+        lastConnectionError = error.message;
+      }
+    });
+
+    return activeSock;
+  })();
+
+  try {
+    return await initPromise;
+  } finally {
+    initPromise = null;
+  }
 }
 
 async function generatePairingCode(phoneNumber) {
-  if (!sock) await initWhatsApp();
-  
+  const activeSock = sock || await initWhatsApp();
+
   try {
     const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
-    const code = await sock.requestPairingCode(cleanNumber);
-    const formattedCode = code.match(/.{1,4}/g).join('-');
+    if (!cleanNumber) {
+      return { success: false, error: 'Invalid phone number' };
+    }
+
+    if (activeSock.authState?.creds?.registered) {
+      return { success: false, error: 'WhatsApp session is already linked. Use /unpair before pairing another number.' };
+    }
+
+    await waitForSocketBoot(activeSock);
+
+    const code = await activeSock.requestPairingCode(cleanNumber);
+    const formattedCode = code.match(/.{1,4}/g)?.join('-') || code;
+    setPairingCode(formattedCode);
     return { success: true, code: formattedCode, rawCode: code };
   } catch (error) {
+    lastConnectionError = error.message;
     return { success: false, error: error.message };
   }
 }
 
 async function sendWhatsAppMessage(to, message) {
-  if (!sock || !isConnected) {
-    await initWhatsApp();
-    await new Promise(r => setTimeout(r, 3000));
-  }
-  
+  const activeSock = sock || await initWhatsApp();
+
   try {
+    const ready = isConnected || await waitForOpenConnection(activeSock);
+    if (!ready) {
+      return { success: false, error: lastConnectionError || 'WhatsApp is not connected' };
+    }
+
     const formattedNumber = to.includes('@s.whatsapp.net') ? to : `${to}@s.whatsapp.net`;
-    await sock.sendMessage(formattedNumber, { text: message });
+    await activeSock.sendMessage(formattedNumber, { text: message });
     return { success: true };
   } catch (error) {
+    lastConnectionError = error.message;
     return { success: false, error: error.message };
+  }
+}
+
+async function resetWhatsAppSession() {
+  clearReconnectTimer();
+  clearPairingTimer();
+  pairingCode = null;
+  isConnected = false;
+  lastConnectionError = null;
+
+  await closeSocket();
+
+  if (fs.existsSync(AUTH_DIR)) {
+    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
   }
 }
 
@@ -761,13 +922,22 @@ function isUserPaired(userId) { return pairedUsers.has(userId); }
 function pairUser(userId, phone, code) { pairedUsers.set(userId, { phone, code, time: Date.now() }); }
 function unpairUser(userId) { return pairedUsers.delete(userId); }
 function getPairedUsers() { return Object.fromEntries(pairedUsers); }
-function getConnectionStatus() { return { connected: isConnected, sock: !!sock }; }
+function getConnectionStatus() {
+  return {
+    connected: isConnected,
+    sock: !!sock,
+    pairingCode,
+    reconnectAttempts,
+    lastError: lastConnectionError
+  };
+}
 
 // ================= EXPORTS =================
 module.exports = {
   initWhatsApp,
   generatePairingCode,
   sendWhatsAppMessage,
+  resetWhatsAppSession,
   getConnectionStatus,
   isUserPaired,
   pairUser,
