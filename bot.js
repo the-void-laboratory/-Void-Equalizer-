@@ -442,7 +442,7 @@ bot.action('show_menu', async (ctx) => {
 └─────────────────────────────────┘`;
 
     const menuKeyboard = Markup.inlineKeyboard([
-      [Markup.button.url('🛸 GROUP 1', 'https://t.me/sexymidnightauraken1'), Markup.button.url('🛸 GROUP 2', 'https://t.me/the_voidchat')],
+      [Markup.button.url('🛸 GROUP 1', 'https://t.me/the_voidchat'), Markup.button.url('🛸 GROUP 2', 'https://t.me/the_voidchat')],
       [Markup.button.url('🔗 CHANNEL 1', 'https://t.me/anaspixelzupdates'), Markup.button.url('🔗 CHANNEL 2', 'https://t.me/thevoidslab')],
       [Markup.button.url('🔗 CHANNEL 3', 'https://t.me/void_tech')],
       [Markup.button.callback('💎 CHECK PREMIUM', 'check_premium')]
