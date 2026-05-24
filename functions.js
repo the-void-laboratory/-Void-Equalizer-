@@ -1,5 +1,4 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
-const QRCode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -20,6 +19,7 @@ const AUTH_DIR = path.join(__dirname, 'auth');
 const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
 const SOCKET_BOOT_DELAY_MS = 5000;
 const MESSAGE_CONNECT_TIMEOUT_MS = 15000;
+const MAX_RECONNECT_ATTEMPTS = 3;
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -78,6 +78,7 @@ async function waitForOpenConnection(activeSock, timeoutMs = MESSAGE_CONNECT_TIM
 
 function scheduleReconnect() {
   if (reconnectTimer || initPromise) return;
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
 
   const delayMs = Math.min(15000, 2000 * Math.max(1, reconnectAttempts + 1));
   reconnectAttempts += 1;
@@ -809,12 +810,7 @@ async function initWhatsApp() {
     activeSock.ev.on('connection.update', (update) => {
       if (sock !== activeSock) return;
 
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr && !pairingCode) {
-        QRCode.generate(qr, { small: true });
-        console.log('📱 Scan QR Code with WhatsApp');
-      }
+      const { connection, lastDisconnect } = update;
 
       if (connection === 'open') {
         isConnected = true;
@@ -862,17 +858,19 @@ async function initWhatsApp() {
 }
 
 async function generatePairingCode(phoneNumber) {
-  const activeSock = sock || await initWhatsApp();
-
   try {
     const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
     if (!cleanNumber) {
       return { success: false, error: 'Invalid phone number' };
     }
 
-    if (activeSock.authState?.creds?.registered) {
+    if (sock?.authState?.creds?.registered) {
       return { success: false, error: 'WhatsApp session is already linked. Use /unpair before pairing another number.' };
     }
+
+    // Pair-code flow should always start from a clean auth state.
+    await resetWhatsAppSession();
+    const activeSock = await initWhatsApp();
 
     await waitForSocketBoot(activeSock);
 
@@ -910,6 +908,7 @@ async function resetWhatsAppSession() {
   pairingCode = null;
   isConnected = false;
   lastConnectionError = null;
+  reconnectAttempts = 0;
 
   await closeSocket();
 

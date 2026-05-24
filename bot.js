@@ -2,7 +2,6 @@ require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
 const fs = require('fs');
 const {
-    initWhatsApp,
     generatePairingCode,
     sendWhatsAppMessage,
     resetWhatsAppSession,
@@ -104,9 +103,6 @@ function isAdmin(userId) { return adminIds.has(userId) || userId === OWNER_ID; }
 loadPremiumUsers();
 loadAllUsers();
 loadAdmins();
-
-// Initialize WhatsApp
-initWhatsApp().catch(console.error);
 
 const bot = new Telegraf(TOKEN);
 
