@@ -7,17 +7,22 @@
     "start": "node bot.js"
   },
   "dependencies": {
-    "dotenv": "^16.3.1",
-    "telegraf": "^4.15.3",
-    "fs": "^0.0.1-security",
-    "qrcode-terminal": "^0.12.0",
-    "@whiskeysockets/baileys": "^6.7.5",
-    "pino": "^8.17.2",
+    "@whiskeysockets/baileys": "^6.7.23",
     "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "fs": "^0.0.1-security",
     "https-proxy-agent": "^7.0.2",
-    "socks-proxy-agent": "^8.0.2"
+    "pino": "^8.17.2",
+    "qrcode-terminal": "^0.12.0",
+    "socks-proxy-agent": "^8.0.2",
+    "telegraf": "^4.15.3"
   },
-  "keywords": ["telegram", "bot", "hacking", "whatsapp"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "hacking",
+    "whatsapp"
+  ],
   "author": "Lord Satanus",
   "license": "MIT"
 }

@@ -17,7 +17,7 @@ let lastConnectionError = null;
 
 const AUTH_DIR = path.join(__dirname, 'auth');
 const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
-const SOCKET_BOOT_DELAY_MS = 5000;
+const SOCKET_BOOT_DELAY_MS = 8000;
 const MESSAGE_CONNECT_TIMEOUT_MS = 15000;
 const MAX_RECONNECT_ATTEMPTS = 3;
 
@@ -62,6 +62,22 @@ async function waitForSocketBoot(activeSock) {
   } catch {}
 
   await delay(1500);
+}
+
+async function waitForPairingReady(activeSock) {
+  if (!activeSock?.waitForConnectionUpdate) {
+    await delay(SOCKET_BOOT_DELAY_MS);
+    return;
+  }
+
+  try {
+    await activeSock.waitForConnectionUpdate(
+      update => update.connection === 'connecting' || update.connection === 'open' || Boolean(update.isNewLogin),
+      SOCKET_BOOT_DELAY_MS
+    );
+  } catch {}
+
+  await delay(2000);
 }
 
 async function waitForOpenConnection(activeSock, timeoutMs = MESSAGE_CONNECT_TIMEOUT_MS) {
@@ -828,11 +844,11 @@ async function initWhatsApp() {
         const reason = lastDisconnect?.error?.output?.statusCode;
         lastConnectionError = lastDisconnect?.error?.message || 'Connection closed';
 
-        if (reason !== DisconnectReason.loggedOut) {
+        if (reason !== DisconnectReason.loggedOut && activeSock.authState?.creds?.registered) {
           console.log(`⚠️ Connection lost, reconnecting... (${lastConnectionError})`);
           scheduleReconnect();
         } else {
-          console.log('❌ WhatsApp session logged out. Generate a new pairing code to relink.');
+          console.log('❌ WhatsApp pairing session closed. Generate a new pairing code to relink.');
           clearPairingTimer();
           pairingCode = null;
         }
@@ -858,28 +874,42 @@ async function initWhatsApp() {
 }
 
 async function generatePairingCode(phoneNumber) {
-  try {
-    const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
-    if (!cleanNumber) {
-      return { success: false, error: 'Invalid phone number' };
-    }
+  const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+  if (!cleanNumber) {
+    return { success: false, error: 'Invalid phone number' };
+  }
 
-    if (sock?.authState?.creds?.registered) {
-      return { success: false, error: 'WhatsApp session is already linked. Use /unpair before pairing another number.' };
-    }
-
-    // Pair-code flow should always start from a clean auth state.
+  const attemptPairing = async () => {
     await resetWhatsAppSession();
     const activeSock = await initWhatsApp();
-
     await waitForSocketBoot(activeSock);
+    await waitForPairingReady(activeSock);
 
     const code = await activeSock.requestPairingCode(cleanNumber);
     const formattedCode = code.match(/.{1,4}/g)?.join('-') || code;
     setPairingCode(formattedCode);
     return { success: true, code: formattedCode, rawCode: code };
+  };
+
+  try {
+    if (sock?.authState?.creds?.registered) {
+      return { success: false, error: 'WhatsApp session is already linked. Use /unpair before pairing another number.' };
+    }
+
+    return await attemptPairing();
   } catch (error) {
     lastConnectionError = error.message;
+
+    if (/connection\s*(closed|failure)/i.test(error.message || '')) {
+      try {
+        await delay(1500);
+        return await attemptPairing();
+      } catch (retryError) {
+        lastConnectionError = retryError.message;
+        return { success: false, error: retryError.message };
+      }
+    }
+
     return { success: false, error: error.message };
   }
 }
