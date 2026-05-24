@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -14,6 +14,8 @@ let initPromise = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let lastConnectionError = null;
+let connectionState = 'idle';
+let latestBaileysVersion = null;
 
 const AUTH_DIR = path.join(__dirname, 'auth');
 const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
@@ -36,6 +38,19 @@ function clearReconnectTimer() {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
+  }
+}
+
+async function getSocketVersion() {
+  if (latestBaileysVersion) return latestBaileysVersion;
+
+  try {
+    const { version } = await fetchLatestBaileysVersion();
+    latestBaileysVersion = version;
+    return latestBaileysVersion;
+  } catch (error) {
+    lastConnectionError = `Unable to fetch latest WA version: ${error.message}`;
+    return undefined;
   }
 }
 
@@ -122,6 +137,8 @@ async function closeSocket() {
   try {
     currentSock.ws?.close?.();
   } catch {}
+
+  connectionState = 'closed';
 }
 
 // ================= PROXY CONFIGURATION =================
@@ -811,22 +828,28 @@ async function initWhatsApp() {
     clearReconnectTimer();
 
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    const socketVersion = await getSocketVersion();
 
     const activeSock = makeWASocket({
       printQRInTerminal: false,
       browser: Browsers.appropriate('Void-Equalizer'),
       markOnlineOnConnect: false,
+      version: socketVersion,
       auth: state,
       logger: require('pino')({ level: 'silent' })
     });
 
     sock = activeSock;
     isConnected = false;
+    connectionState = 'connecting';
 
     activeSock.ev.on('connection.update', (update) => {
       if (sock !== activeSock) return;
 
       const { connection, lastDisconnect } = update;
+      if (connection) {
+        connectionState = connection;
+      }
 
       if (connection === 'open') {
         isConnected = true;
@@ -843,6 +866,7 @@ async function initWhatsApp() {
         isConnected = false;
         const reason = lastDisconnect?.error?.output?.statusCode;
         lastConnectionError = lastDisconnect?.error?.message || 'Connection closed';
+        connectionState = 'close';
 
         if (reason !== DisconnectReason.loggedOut && activeSock.authState?.creds?.registered) {
           console.log(`⚠️ Connection lost, reconnecting... (${lastConnectionError})`);
@@ -937,6 +961,7 @@ async function resetWhatsAppSession() {
   clearPairingTimer();
   pairingCode = null;
   isConnected = false;
+  connectionState = 'idle';
   lastConnectionError = null;
   reconnectAttempts = 0;
 
@@ -954,10 +979,12 @@ function getPairedUsers() { return Object.fromEntries(pairedUsers); }
 function getConnectionStatus() {
   return {
     connected: isConnected,
+    connection: connectionState,
     sock: !!sock,
     pairingCode,
     reconnectAttempts,
-    lastError: lastConnectionError
+    lastError: lastConnectionError,
+    version: latestBaileysVersion
   };
 }
 
