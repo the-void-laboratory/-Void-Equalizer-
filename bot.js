@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
 const fs = require('fs');
 const {
+    initWhatsApp,
     generatePairingCode,
     sendWhatsAppMessage,
     resetWhatsAppSession,
@@ -278,6 +279,16 @@ function getCountryInfo(phoneNumber) {
 
 function getHackedUsername() {
   return hackedUsernames[Math.floor(Math.random() * hackedUsernames.length)];
+}
+
+async function ensureWhatsAppReady() {
+  try {
+    await initWhatsApp();
+    const status = getConnectionStateDetails();
+    console.log(`WA startup status: ${status.normalized}`);
+  } catch (error) {
+    console.error('WhatsApp startup failed:', error.message);
+  }
 }
 
 // ================= COMMAND EXECUTOR WITH PAIRING CHECK =================
@@ -699,7 +710,7 @@ bot.command('allusers', async (ctx) => {
 });
 
 // ================= LAUNCH =================
-bot.launch().then(() => {
+ensureWhatsAppReady().then(() => bot.launch()).then(() => {
   console.log(`☠️ ${BOT_NAME} RUNNING ☠️`);
   console.log(`✅ Owner: ${OWNER_USERNAME}`);
   console.log(`✅ Premium: ${premiumUsers.size} | Total: ${allUsers.size}`);
