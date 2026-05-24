@@ -6,15 +6,21 @@ const {
     generatePairingCode,
     sendWhatsAppMessage,
     getConnectionStatus,
-    isUserPaired,
-    pairUser,
-    unpairUser, // Added missing import wrapper reference
-    getPairedUsers,
     miniKill, infectIll, tripleX, oviaLoad, hateYou,
     droidVirus, iosVirus, linuxVirus, pcKill, destroy,
     banWA, banTG, unbanWA, unbanTG, ipHack, groupCrash, invisHell, delayHell, cloneBot,
     waBanAPI, tgBanAPI
 } = require('./functions.js');
+const {
+  beginPairing,
+  clearPairing,
+  clearPendingPairing,
+  getActivePairing,
+  getLinkedSession,
+  getRemainingPairingMs,
+  markDisconnected,
+  markLinked
+} = require('./pairing.js');
 
 // ================= CONFIG =================
 const TOKEN = "8937576130:AAHphZ2cpFpycTZaITgK9LkuCo5krEH991M";
@@ -103,6 +109,51 @@ initWhatsApp().catch(console.error);
 
 const bot = new Telegraf(TOKEN);
 
+function isWhatsAppConnected() {
+  try {
+    const status = getConnectionStatus();
+    if (typeof status === 'boolean') return status;
+    if (typeof status === 'string') {
+      const normalized = status.toLowerCase();
+      return normalized === 'open' || normalized === 'connected' || normalized === 'online';
+    }
+    if (status && typeof status === 'object') {
+      const normalized = String(
+        status.connection ?? status.status ?? status.state ?? status.readyState ?? ''
+      ).toLowerCase();
+      if (normalized) {
+        return normalized === 'open' || normalized === 'connected' || normalized === 'online';
+      }
+      if (typeof status.connected === 'boolean') return status.connected;
+      if (typeof status.open === 'boolean') return status.open;
+    }
+  } catch {}
+  return false;
+}
+
+function syncPairingState() {
+  const connected = isWhatsAppConnected();
+  const activePairing = getActivePairing();
+  const linkedSession = getLinkedSession();
+
+  if (connected && activePairing) {
+    return { connected, linkedSession: markLinked(getConnectionStatus()), activePairing: null };
+  }
+
+  if (!connected && linkedSession) {
+    markDisconnected();
+    return { connected, linkedSession: null, activePairing };
+  }
+
+  return { connected, linkedSession, activePairing };
+}
+
+setInterval(() => {
+  try {
+    syncPairingState();
+  } catch {}
+}, 10000);
+
 // ================= HELPER FUNCTIONS =================
 function escapeHTML(str) {
   if (!str) return '';
@@ -163,10 +214,11 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   const userId = ctx.from.id;
   const args = ctx.message.text.split(' ').slice(1);
   const target = args.join(' ').trim();
+  const { linkedSession } = syncPairingState();
   
   // Check pairing verification for active functional bugs
   if (command !== '/pair' && command !== '/unpair' && command !== '/paired' && bugFunction) {
-    if (!isUserPaired(userId)) {
+    if (!linkedSession) {
       await ctx.reply(`🔒 <b>WHATSAPP NOT PAIRED!</b>\n\n⚠️ You must pair your WhatsApp first!\n📱 Use /pair &lt;phone_number&gt; to connect\n\nExample: /pair 2348012345678\n\n⚡ After pairing, you can send bugs!`, { parse_mode: 'HTML' });
       return;
     }
@@ -189,19 +241,39 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
     if (phoneNumber.length < 10) {
       return ctx.reply(`⚠️ INVALID PHONE NUMBER!\nProvide country code without + symbols.\nExample: /pair 2348012345678`);
     }
+
+    const activePairing = getActivePairing();
+    const currentLinked = getLinkedSession();
+
+    if (activePairing) {
+      const remainingSeconds = Math.ceil(getRemainingPairingMs() / 1000);
+      return ctx.reply(
+        `⚠️ A pairing request is already pending for ${activePairing.phone}.\n` +
+        `⏳ Wait about ${remainingSeconds}s for it to finish or expire before starting another one.`
+      );
+    }
+
+    if (currentLinked) {
+      return ctx.reply(
+        `✅ WhatsApp is already linked to ${currentLinked.phone}.\n` +
+        `Use /unpair first if you want to connect a different number.`
+      );
+    }
     
     await ctx.reply(`📱 GENERATING PAIRING CODE FOR ${phoneNumber}...\n⏳ PLEASE WAIT...`);
     
     try {
       const result = await generatePairingCode(phoneNumber);
       if (result && result.success) {
-        pairUser(userId, phoneNumber, result.code);
-        await ctx.reply(`✅ PAIRING CODE GENERATED!\n\n🔐 YOUR 8-DIGIT CODE: *${result.code}*\n\n📱 Open WhatsApp on ${phoneNumber}\n⚡ Enter this code to connect\n⏰ Code expires in 5 minutes`, { parse_mode: 'Markdown' });
+        beginPairing({ userId, phone: phoneNumber, code: result.code });
+        await ctx.reply(`✅ PAIRING CODE GENERATED!\n\n🔐 YOUR 8-DIGIT CODE: *${result.code}*\n\n📱 Open WhatsApp on ${phoneNumber}\n⚡ Enter this code to connect\n⏰ Code expires in 5 minutes\n\nℹ️ The bot will only mark this as linked after WhatsApp actually completes the connection.`, { parse_mode: 'Markdown' });
         await logToGroup(`🔐 PAIRING | USER: ${userId} | PHONE: ${phoneNumber} | CODE: ${result.code}`);
       } else {
+        clearPendingPairing();
         await ctx.reply(`❌ PAIRING FAILED!\n⚠️ ERROR: ${result ? result.error : 'Connection lost with WhatsApp server'}`);
       }
     } catch (pairErr) {
+      clearPendingPairing();
       console.error('Pairing internal execution breakdown:', pairErr.message);
       await ctx.reply(`❌ PAIRING BRIDGE ERROR\nCould not communicate with WhatsApp core module.`);
     }
@@ -210,24 +282,41 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   
   // Handle Unpair Command
   if (command === '/unpair') {
-    const removed = unpairUser(userId);
-    if (removed) {
-      await ctx.reply(`✅ WhatsApp unpaired successfully!\n📱 You can now pair a new device.`);
+    const activePairing = getActivePairing();
+    const currentLinked = getLinkedSession();
+    if (activePairing || currentLinked) {
+      clearPairing();
+      await ctx.reply(`✅ WhatsApp pairing state cleared successfully!\n📱 You can now pair a new device.`);
     } else {
-      await ctx.reply(`❌ No paired device found for your account.`);
+      await ctx.reply(`❌ No active or linked WhatsApp session was found.`);
     }
     return;
   }
   
   // Handle Check Paired Command
   if (command === '/paired') {
-    const paired = getPairedUsers();
-    const userPaired = paired[userId];
-    if (userPaired) {
-      await ctx.reply(`✅ Your WhatsApp is PAIRED!\n📱 Phone: ${userPaired.phone}\n🔐 Code: ${userPaired.code}\n🕒 Paired at: ${new Date(userPaired.time).toLocaleString()}`);
-    } else {
-      await ctx.reply(`❌ No WhatsApp paired.\n📱 Use /pair &lt;phone_number&gt; to connect.`, { parse_mode: 'HTML' });
+    const status = syncPairingState();
+    if (status.linkedSession) {
+      await ctx.reply(
+        `✅ WhatsApp is LINKED!\n` +
+        `📱 Phone: ${status.linkedSession.phone}\n` +
+        `🕒 Linked at: ${new Date(status.linkedSession.linkedAt).toLocaleString()}`
+      );
+      return;
     }
+
+    if (status.activePairing) {
+      const remainingSeconds = Math.ceil(getRemainingPairingMs() / 1000);
+      await ctx.reply(
+        `⏳ Pairing is still pending for ${status.activePairing.phone}.\n` +
+        `🔐 Code: ${status.activePairing.code}\n` +
+        `⌛ Expires in about ${remainingSeconds}s.\n` +
+        `If you already entered the code in WhatsApp and this stays pending, the WhatsApp socket is not completing the link.`
+      );
+      return;
+    }
+
+    await ctx.reply(`❌ No WhatsApp linked.\n📱 Use /pair &lt;phone_number&gt; to connect.`, { parse_mode: 'HTML' });
     return;
   }
   
@@ -243,9 +332,9 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
       const safeMessage = escapeHTML(bugResult.message);
       responseMessage = `<pre>${safeMessage}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       
-      const paired = getPairedUsers()[userId];
-      if (paired && paired.phone) {
-        await sendWhatsAppMessage(paired.phone, `🔥 BUG EXECUTED\n🎯 TARGET: ${targetValue}\n💀 ${toolName}\n🕒 ${new Date().toLocaleString()}`);
+      const currentLinked = getLinkedSession();
+      if (currentLinked && currentLinked.phone) {
+        await sendWhatsAppMessage(currentLinked.phone, `🔥 BUG EXECUTED\n🎯 TARGET: ${targetValue}\n💀 ${toolName}\n🕒 ${new Date().toLocaleString()}`);
       }
     }
   }
