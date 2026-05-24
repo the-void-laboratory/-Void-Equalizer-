@@ -63,6 +63,15 @@ function setPairingCode(code) {
   }, PAIRING_CODE_TTL_MS);
 }
 
+function normalizePhoneNumber(phoneNumber) {
+  return String(phoneNumber || '').replace(/[^0-9]/g, '');
+}
+
+function formatPairingCode(code) {
+  const normalized = String(code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return normalized.match(/.{1,4}/g)?.join('-') || normalized;
+}
+
 async function waitForSocketBoot(activeSock) {
   if (!activeSock?.waitForConnectionUpdate) {
     await delay(SOCKET_BOOT_DELAY_MS);
@@ -898,9 +907,13 @@ async function initWhatsApp() {
 }
 
 async function generatePairingCode(phoneNumber) {
-  const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+  const cleanNumber = normalizePhoneNumber(phoneNumber);
   if (!cleanNumber) {
     return { success: false, error: 'Invalid phone number' };
+  }
+
+  if (cleanNumber.startsWith('0')) {
+    return { success: false, error: 'Phone number must include country code and must not start with 0.' };
   }
 
   const attemptPairing = async () => {
@@ -910,7 +923,7 @@ async function generatePairingCode(phoneNumber) {
     await waitForPairingReady(activeSock);
 
     const code = await activeSock.requestPairingCode(cleanNumber);
-    const formattedCode = code.match(/.{1,4}/g)?.join('-') || code;
+    const formattedCode = formatPairingCode(code);
     setPairingCode(formattedCode);
     return { success: true, code: formattedCode, rawCode: code };
   };
@@ -981,6 +994,7 @@ function getConnectionStatus() {
     connected: isConnected,
     connection: connectionState,
     sock: !!sock,
+    registered: Boolean(sock?.authState?.creds?.registered),
     pairingCode,
     reconnectAttempts,
     lastError: lastConnectionError,

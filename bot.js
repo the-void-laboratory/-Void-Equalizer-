@@ -358,6 +358,9 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
     if (phoneNumber.length < 10) {
       return ctx.reply(`⚠️ INVALID PHONE NUMBER!\nProvide country code without + symbols.\nExample: /pair 2348012345678`);
     }
+    if (phoneNumber.startsWith('0')) {
+      return ctx.reply(`⚠️ INVALID PHONE NUMBER!\nUse full international format with country code.\nExample: /pair 2348012345678\nNot: /pair 08012345678`);
+    }
 
     const activePairing = getActivePairing();
     const currentLinked = getLinkedSession();
@@ -386,7 +389,20 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
       const result = await generatePairingCodeWithRecovery(phoneNumber);
       if (result && result.success) {
         beginPairing({ userId, phone: phoneNumber, code: result.code });
-        await ctx.reply(`✅ PAIRING CODE GENERATED!\n\n🔐 YOUR 8-DIGIT CODE: *${result.code}*\n\n📱 Open WhatsApp on ${phoneNumber}\n⚡ Enter this code to connect\n⏰ Code expires in 5 minutes\n\nℹ️ The bot will only mark this as linked after WhatsApp actually completes the connection.`, { parse_mode: 'Markdown' });
+        await ctx.reply(
+          `✅ PAIRING CODE GENERATED!\n\n` +
+          `🔐 CODE: *${result.code}*\n\n` +
+          `Use this exact number in WhatsApp: *${phoneNumber}*\n` +
+          `The code is *not* sent to your WhatsApp chats.\n\n` +
+          `📱 On the phone with that WhatsApp account:\n` +
+          `1. Open WhatsApp\n` +
+          `2. Go to Linked devices\n` +
+          `3. Tap Link with phone number instead\n` +
+          `4. Enter *${result.code}*\n\n` +
+          `⚠️ If WhatsApp says "Couldn't link device", the number in /pair does not match that WhatsApp account, or the code has expired.\n` +
+          `⏰ Generate and use the code immediately.`,
+          { parse_mode: 'Markdown' }
+        );
         await logToGroup(`🔐 PAIRING | USER: ${userId} | PHONE: ${phoneNumber} | CODE: ${result.code}`);
       } else {
         clearPendingPairing();
@@ -435,11 +451,13 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
 
     if (status.activePairing) {
       const remainingSeconds = Math.ceil(getRemainingPairingMs() / 1000);
+      const waStatus = getConnectionStateDetails();
       await ctx.reply(
         `⏳ Pairing is still pending for ${status.activePairing.phone}.\n` +
         `🔐 Code: ${status.activePairing.code}\n` +
         `⌛ Expires in about ${remainingSeconds}s.\n` +
-        `If you already entered the code in WhatsApp and this stays pending, the WhatsApp socket is not completing the link.`
+        `WA status: ${waStatus.normalized}\n` +
+        `If you already entered the code in WhatsApp and this stays pending, the phone number/account does not match or the WhatsApp socket is not completing the link.`
       );
       return;
     }
