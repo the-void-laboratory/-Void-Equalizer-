@@ -166,7 +166,7 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   // Check if user is paired for bug commands (not for pair command)
   if (command !== '/pair' && command !== '/unpair' && command !== '/paired' && bugFunction) {
     if (!isUserPaired(userId)) {
-      await ctx.reply(`🔒 <b>WHATSAPP NOT PAIRED!</b>\n\n⚠️ You must pair your WhatsApp first!\n📱 Use /pair <phone_number> to connect\n\nExample: /pair 2348012345678\n\n⚡ After pairing, you can send bugs!`, { parse_mode: 'HTML' });
+      await ctx.reply(`🔒 <b>WHATSAPP NOT PAIRED!</b>\n\n⚠️ You must pair your WhatsApp first!\n📱 Use /pair &lt;phone_number&gt; to connect\n\nExample: /pair 2348012345678\n\n⚡ After pairing, you can send bugs!`, { parse_mode: 'HTML' });
       return;
     }
   }
@@ -181,7 +181,7 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   if (command === '/pair') {
     const phoneNumber = targetValue;
     if (!phoneNumber || phoneNumber.length < 10) {
-      return ctx.reply(`⚠️ USAGE: /pair <phone_number>\nExample: /pair 2348012345678`);
+      return ctx.reply(`⚠️ USAGE: /pair &lt;phone_number&gt;\nExample: /pair 2348012345678`);
     }
     
     await ctx.reply(`📱 GENERATING PAIRING CODE FOR ${phoneNumber}...\n⏳ PLEASE WAIT...`);
@@ -215,7 +215,7 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
     if (userPaired) {
       await ctx.reply(`✅ Your WhatsApp is PAIRED!\n📱 Phone: ${userPaired.phone}\n🔐 Code: ${userPaired.code}\n🕒 Paired at: ${new Date(userPaired.time).toLocaleString()}`);
     } else {
-      await ctx.reply(`❌ No WhatsApp paired.\n📱 Use /pair <phone_number> to connect.`);
+      await ctx.reply(`❌ No WhatsApp paired.\n📱 Use /pair &lt;phone_number&gt; to connect.`);
     }
     return;
   }
