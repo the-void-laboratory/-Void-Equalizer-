@@ -128,6 +128,80 @@ function isWhatsAppConnected() {
   return false;
 }
 
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getConnectionStateDetails() {
+  try {
+    const status = getConnectionStatus();
+    if (typeof status === 'boolean') {
+      return { raw: status, normalized: status ? 'connected' : 'disconnected' };
+    }
+    if (typeof status === 'string') {
+      return { raw: status, normalized: status.toLowerCase() };
+    }
+    if (status && typeof status === 'object') {
+      const normalized = String(
+        status.connection ?? status.status ?? status.state ?? status.readyState ?? ''
+      ).toLowerCase();
+      if (normalized) {
+        return { raw: status, normalized };
+      }
+      if (typeof status.connected === 'boolean') {
+        return { raw: status, normalized: status.connected ? 'connected' : 'disconnected' };
+      }
+      if (typeof status.open === 'boolean') {
+        return { raw: status, normalized: status.open ? 'open' : 'closed' };
+      }
+      if (status.sock) {
+        return { raw: status, normalized: 'socket-present' };
+      }
+    }
+    return { raw: status, normalized: 'unknown' };
+  } catch (error) {
+    return { raw: null, normalized: `error:${error.message}` };
+  }
+}
+
+function isRecoverablePairingError(errorText) {
+  return /connection\s*closed|connection\s*lost|timed?\s*out|not\s*connected|socket|stream|closed/i.test(
+    String(errorText || '')
+  );
+}
+
+async function generatePairingCodeWithRecovery(phoneNumber) {
+  let lastResult = null;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1) {
+      try {
+        await resetWhatsAppSession();
+      } catch {}
+      await wait(2000);
+    }
+
+    try {
+      const result = await generatePairingCode(phoneNumber);
+      if (result?.success && result?.code) {
+        return result;
+      }
+
+      lastResult = result ?? { success: false, error: 'Unknown pairing failure' };
+      if (!isRecoverablePairingError(lastResult.error)) {
+        break;
+      }
+    } catch (error) {
+      lastResult = { success: false, error: error.message || 'Unknown pairing exception' };
+      if (!isRecoverablePairingError(lastResult.error)) {
+        break;
+      }
+    }
+  }
+
+  return lastResult ?? { success: false, error: 'Unable to generate pairing code' };
+}
+
 function syncPairingState() {
   const connected = isWhatsAppConnected();
   const activePairing = getActivePairing();
@@ -259,14 +333,19 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
     
     await ctx.reply(`📱 GENERATING PAIRING CODE FOR ${phoneNumber}...\n⏳ PLEASE WAIT...`);
     
+    const statusBeforePair = getConnectionStateDetails();
+    await ctx.reply(`WA STATUS: ${statusBeforePair.normalized}`);
+
     try {
-      const result = await generatePairingCode(phoneNumber);
+      const result = await generatePairingCodeWithRecovery(phoneNumber);
       if (result && result.success) {
         beginPairing({ userId, phone: phoneNumber, code: result.code });
         await ctx.reply(`✅ PAIRING CODE GENERATED!\n\n🔐 YOUR 8-DIGIT CODE: *${result.code}*\n\n📱 Open WhatsApp on ${phoneNumber}\n⚡ Enter this code to connect\n⏰ Code expires in 5 minutes\n\nℹ️ The bot will only mark this as linked after WhatsApp actually completes the connection.`, { parse_mode: 'Markdown' });
         await logToGroup(`🔐 PAIRING | USER: ${userId} | PHONE: ${phoneNumber} | CODE: ${result.code}`);
       } else {
         clearPendingPairing();
+        const statusAfterFail = getConnectionStateDetails();
+        await ctx.reply(`WA STATUS: ${statusAfterFail.normalized}\nTry /pair again in a few seconds. If it still fails, use /unpair once and retry.`);
         await ctx.reply(`❌ PAIRING FAILED!\n⚠️ ERROR: ${result ? result.error : 'Connection lost with WhatsApp server'}`);
       }
     } catch (pairErr) {
@@ -281,8 +360,12 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   if (command === '/unpair') {
     const activePairing = getActivePairing();
     const currentLinked = getLinkedSession();
-    const connectionStatus = getConnectionStatus();
-    if (activePairing || currentLinked || connectionStatus.sock || connectionStatus.connected) {
+    const connectionStatus = getConnectionStateDetails();
+    if (
+      activePairing ||
+      currentLinked ||
+      ['connected', 'open', 'socket-present'].includes(connectionStatus.normalized)
+    ) {
       await resetWhatsAppSession();
       clearPairing();
       await ctx.reply(`✅ WhatsApp pairing state cleared successfully!\n📱 You can now pair a new device.`);
