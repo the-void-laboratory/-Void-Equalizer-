@@ -220,7 +220,8 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   if (bugFunction) {
     const bugResult = await bugFunction(targetValue);
     if (bugResult.success) {
-      responseMessage = bugResult.message + `\n🕒 ${new Date().toLocaleString()}`;
+      // Wrap the message content inside pre tags to stop Telegram from breaking on special characters
+      responseMessage = `<pre>${bugResult.message}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       
       // Send to paired WhatsApp
       const paired = getPairedUsers()[userId];
@@ -229,7 +230,6 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
       }
     }
   }
-  
   await ctx.reply(responseMessage, { parse_mode: 'HTML' });
   await logToGroup(`✅ ADMIN DONE | ${toolName} | ${userId}`);
 }
@@ -310,7 +310,8 @@ bot.action(/approve_(.+)/, async (ctx) => {
     if (request.bugFunction) {
       const bugResult = await request.bugFunction(request.target);
       if (bugResult.success) {
-        responseMessage = bugResult.message + `\n🕒 ${new Date().toLocaleString()}`;
+        // Wrap the approved text inside pre tags to prevent any HTML formatting issues
+        responseMessage = `<pre>${bugResult.message}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       }
     }
     
