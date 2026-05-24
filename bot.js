@@ -32,7 +32,7 @@ const COMMUNITY_BUTTONS = [
   { name: "🛸 GROUP 2", url: "https://t.me/the_voidchat" },
   { name: "🔗 CHANNEL 1", url: "https://t.me/anaspixelzupdates" },
   { name: "🔗 CHANNEL 2", url: "https://t.me/thevoidslab" },
-  { name: "🔗 CHANNEL 3", url: "https://t.me/void_tech" }
+  { name: "🔗 CHANNEL 3", url: "https://t.me/void_support_01" }
 ];
 
 // ================= COUNTRY DATABASE =================
