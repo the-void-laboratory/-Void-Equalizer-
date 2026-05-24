@@ -20,7 +20,7 @@ const {
 const TOKEN = "8937576130:AAHphZ2cpFpycTZaITgK9LkuCo5krEH991M";
 const OWNER_ID = 7828164131;
 const SECOND_ADMIN_ID = 8613087647;
-const LOG_GROUP_ID = "-1003775700503";
+const LOG_GROUP_ID = "-1003711482655";
 const CHANNEL_LINK = "https://t.me/anaspixelzupdates";
 const OWNER_USERNAME = "@certifiedloner_16";
 const START_IMAGE = "https://files.catbox.moe/ncx3lr.jpg";
@@ -28,7 +28,7 @@ const BOT_NAME = "🜏🜐⛧ INFECTION BUG V9 ⛧🜐🜏";
 
 // ================= ALL COMMUNITY BUTTONS =================
 const COMMUNITY_BUTTONS = [
-  { name: "🛸 GROUP 1", url: "https://t.me/the_voidchat" },
+  { name: "🛸 GROUP 1", url: "https://t.me/sexymidnightauraken1" },
   { name: "🛸 GROUP 2", url: "https://t.me/the_voidchat" },
   { name: "🔗 CHANNEL 1", url: "https://t.me/anaspixelzupdates" },
   { name: "🔗 CHANNEL 2", url: "https://t.me/thevoidslab" },
@@ -442,7 +442,7 @@ bot.action('show_menu', async (ctx) => {
 └─────────────────────────────────┘`;
 
     const menuKeyboard = Markup.inlineKeyboard([
-      [Markup.button.url('🛸 GROUP 1', 'https://t.me/the_voidchat'), Markup.button.url('🛸 GROUP 2', 'https://t.me/the_voidchat')],
+      [Markup.button.url('🛸 GROUP 1', 'https://t.me/sexymidnightauraken1'), Markup.button.url('🛸 GROUP 2', 'https://t.me/the_voidchat')],
       [Markup.button.url('🔗 CHANNEL 1', 'https://t.me/anaspixelzupdates'), Markup.button.url('🔗 CHANNEL 2', 'https://t.me/thevoidslab')],
       [Markup.button.url('🔗 CHANNEL 3', 'https://t.me/void_tech')],
       [Markup.button.callback('💎 CHECK PREMIUM', 'check_premium')]
