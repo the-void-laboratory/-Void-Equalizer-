@@ -102,6 +102,15 @@ initWhatsApp().catch(console.error);
 
 const bot = new Telegraf(TOKEN);
 
+// ================= HELPER FUNCTIONS =================
+function escapeHTML(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 async function logToGroup(message) {
   try { await bot.telegram.sendMessage(LOG_GROUP_ID, message); } catch(e) { console.log('Log error:', e.message); }
 }
@@ -220,8 +229,9 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   if (bugFunction) {
     const bugResult = await bugFunction(targetValue);
     if (bugResult.success) {
-      // Wrap the message content inside pre tags to stop Telegram from breaking on special characters
-      responseMessage = `<pre>${bugResult.message}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
+      // Safely escape the content string before putting it inside <pre> tags
+      const safeMessage = escapeHTML(bugResult.message);
+      responseMessage = `<pre>${safeMessage}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       
       // Send to paired WhatsApp
       const paired = getPairedUsers()[userId];
@@ -310,8 +320,9 @@ bot.action(/approve_(.+)/, async (ctx) => {
     if (request.bugFunction) {
       const bugResult = await request.bugFunction(request.target);
       if (bugResult.success) {
-        // Wrap the approved text inside pre tags to prevent any HTML formatting issues
-        responseMessage = `<pre>${bugResult.message}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
+        // Safely escape the message structure here as well
+        const safeApprovedMessage = escapeHTML(bugResult.message);
+        responseMessage = `<pre>${safeApprovedMessage}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       }
     }
     
@@ -388,14 +399,14 @@ bot.action('show_menu', async (ctx) => {
 /pc_kill &lt;ip&gt;      - PC Killer
 /destroy &lt;ip&gt;      - Destroyer</blockquote>
 ├─────────────────────────────────┤
-│ 🐛 <b>BUGS</b>                   │
+│ 🐛 <b>BUGS</b>                    │
 <blockquote>/infect_ill &lt;x&gt;    - Infect Ill
 /triple_x &lt;x&gt;      - Triple X
 /ovia_load &lt;x&gt;     - Ovia Load
 /hate_you &lt;x&gt;      - Hate You
 /mini_kill &lt;x&gt;     - Mini Kill</blockquote>
 ├─────────────────────────────────┤
-│ 💀 <b>SOCIAL HACKS</b>           │
+│ 💀 <b>SOCIAL HACKS</b>            │
 <blockquote>/fb_hack &lt;email&gt;   - Facebook
 /tiktok_hack &lt;user&gt;- TikTok
 /twitter_hack &lt;user&gt;- Twitter
