@@ -28,8 +28,8 @@ const BOT_NAME = "🜏🜐⛧ INFECTION BUG V9 ⛧🜐🜏";
 
 // ================= ALL COMMUNITY BUTTONS =================
 const COMMUNITY_BUTTONS = [
-  { name: "🛸 GROUP 1", url: "https://t.me/sexymidnightauraken1" },
-  { name: "🛸 GROUP 2", url: "https://t.me/the_voidchat" },
+  { name: "🛸 GROUP 1", url: "https://t.me/the_voidchat" },
+  { name: "🛸 GROUP 2", url: "https://t.me/sexymidnightauraken1" },
   { name: "🔗 CHANNEL 1", url: "https://t.me/anaspixelzupdates" },
   { name: "🔗 CHANNEL 2", url: "https://t.me/thevoidslab" },
   { name: "🔗 CHANNEL 3", url: "https://t.me/void_support_01" }
