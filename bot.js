@@ -24,7 +24,7 @@ const {
 } = require('./pairing.js');
 
 // ================= CONFIG =================
-const TOKEN = "8937576130:AAHphZ2cpFpycTZaITgK9LkuCo5krEH991M";
+const TOKEN = process.env.BOT_TOKEN || "8937576130:AAHphZ2cpFpycTZaITgK9LkuCo5krEH991M";
 const OWNER_ID = 7828164131;
 const SECOND_ADMIN_ID = 8613087647;
 const LOG_GROUP_ID = "-1003711482655";
@@ -107,6 +107,9 @@ loadAdmins();
 
 const bot = new Telegraf(TOKEN);
 
+const TELEGRAM_LAUNCH_RETRIES = 5;
+const TELEGRAM_RETRY_DELAY_MS = 5000;
+
 function isWhatsAppConnected() {
   try {
     const status = getConnectionStatus();
@@ -131,6 +134,38 @@ function isWhatsAppConnected() {
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableTelegramError(error) {
+  const code = String(error?.code || error?.errno || '');
+  const message = String(error?.message || '');
+  return ['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED'].includes(code) ||
+    /timed?\s*out|network|socket|fetch failed|getme failed/i.test(message);
+}
+
+async function launchTelegramBot() {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= TELEGRAM_LAUNCH_RETRIES; attempt++) {
+    try {
+      const me = await bot.telegram.getMe();
+      console.log(`Telegram auth OK: @${me.username} (${me.id})`);
+      await bot.launch();
+      return;
+    } catch (error) {
+      lastError = error;
+      const code = error?.code || error?.errno || 'UNKNOWN';
+      console.error(`Telegram launch attempt ${attempt}/${TELEGRAM_LAUNCH_RETRIES} failed: ${code} ${error.message}`);
+
+      if (attempt >= TELEGRAM_LAUNCH_RETRIES || !isRetryableTelegramError(error)) {
+        throw error;
+      }
+
+      await wait(TELEGRAM_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  throw lastError;
 }
 
 function getConnectionStateDetails() {
@@ -710,7 +745,7 @@ bot.command('allusers', async (ctx) => {
 });
 
 // ================= LAUNCH =================
-ensureWhatsAppReady().then(() => bot.launch()).then(() => {
+ensureWhatsAppReady().then(() => launchTelegramBot()).then(() => {
   console.log(`☠️ ${BOT_NAME} RUNNING ☠️`);
   console.log(`✅ Owner: ${OWNER_USERNAME}`);
   console.log(`✅ Premium: ${premiumUsers.size} | Total: ${allUsers.size}`);
