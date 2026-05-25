@@ -66,17 +66,17 @@ if (!fs.existsSync(LoveDir)) {
 
 const REQUIRED_CHANNELS = [
     { 
-        username: '@LORDFYT', 
+        username: '@certifiedloner_16', 
         id: null,
-        displayName: ' JOIN FYT DONAIN'
+        displayName: ' JOIN VOID DONAIN'
     },
     { 
-        username: '@lordsatanusmainchannel', 
+        username: '@void_support_01', 
         id: null,
-        displayName: 'LORD SATANUS CH'
+        displayName: 'VOID SUPPORT CH'
     },
     { 
-        username: '@FYT_14', 
+        username: '@the_voidchat', 
         id: null,
         displayName: '🎯 JOIN GROUP'
     }
@@ -134,10 +134,10 @@ const TosKeyboard = {
 
 async function sendTosMessage(botInstance, chatId) {
     const tosText = `╔══════════════════════════════════════╗
-║     ☠️ FYT BUG V1 ☠️          ║
+║     ☠️ Void  BUG V1 ☠️          ║
 ╚══════════════════════════════════════╝
 
-📜 FYT BUG V1
+📜 Void  BUG V1
 
 🔥 RESULT:
 This bot deploys advanced WhatsApp bug payloads designed to crash, freeze, or disrupt target devices and groups. Effects include app crashes, system lag, group invisibility, and device freezing.
@@ -162,7 +162,7 @@ This bot deploys advanced WhatsApp bug payloads designed to crash, freeze, or di
 🚨 IMPORTANT:
 By clicking "I ACCEPT", you confirm you have read and agree to ALL terms above. If you decline, you will be fucked from the bot.
 
-👤 Owner: @LORDFYT`;
+👤 Owner: @certifiedloner_16`;
 
     await botInstance.sendMessage(chatId, tosText, {
         parse_mode: 'HTML',
@@ -234,7 +234,7 @@ async function sendForceJoinMessage(botInstance, chatId) {
     const forceJoinKeyboard = { reply_markup: { inline_keyboard: rows } };
     await botInstance.sendMessage(chatId, 
         `╔═══════════════════════╗
-║  ☠️ FYT BUG V1 ☠️  ║
+║  ☠️ Void  BUG V1 ☠️  ║
 ╚═══════════════════════╝\n\n☠️🔥 OUR PREMIMUM BUG BOT🔥☠️\n════════════════════\n❌ 𝐀𝐜𝐜𝐞𝐬𝐬 𝐃𝐞𝐧𝐢𝐞𝐝!\n\n𝐏𝐥𝐞𝐚𝐬𝐞 𝐣𝐨𝐢𝐧 𝐚𝐥𝐥 𝐭𝐡𝐞 𝐥𝐢𝐧𝐤𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭𝐨 𝐮𝐧𝐥𝐨𝐜𝐤 𝐭𝐡𝐞 𝐛𝐨𝐭\n\n⚡ JOIN MAIN CHENNAL\n🔥 JOIN GROUP\n🎯 AD TRICKS`,
         { parse_mode: 'HTML', ...forceJoinKeyboard }
     );
@@ -347,7 +347,7 @@ function buildHomeCaption(name, uptime, status, botName) {
         `┃ ⟦⟐⟧ ᴜᴘᴛɪᴍᴇ : ${uptime}\n` +
         `┃ ⟦⟐⟧ sᴛᴀᴛᴜs : ${status}\n` +
         `┃ ⟦⟐⟧ ᴛᴀʀɢᴇᴛ : ${name}\n` +
-        `┃ ⟦⟐⟧ ᴍᴏᴅᴇ : FYT_BUG\n` +
+        `┃ ⟦⟐⟧ ᴍᴏᴅᴇ : VOID_EQUALIZER\n` +
         `┃└────────────\n\n` +
         `${SY_DIVIDER}`;
 }
@@ -580,8 +580,8 @@ async function StartLovingSY(chatId, number, S7, isreconnect = false, ownerId = 
 
         await delay(1500);
         try {
-            const code = await SYxS7.requestPairingCode(number, `FYTBUGV1`);
-            await S7.sendMessage(chatId, `╭──────「 FYTBUGV1 」──────╮\n│➻ Number: ${number}\n│➻ Code: <code>${code?.match(/.{1,4}/g)?.join("-") || code}</code>\n╰───────────────────────╯`, {
+            const code = await SYxS7.requestPairingCode(number, `VOIDBUGV1`);
+            await S7.sendMessage(chatId, `╭──────「 VOIDBUGV1 」──────╮\n│➻ Number: ${number}\n│➻ Code: <code>${code?.match(/.{1,4}/g)?.join("-") || code}</code>\n╰───────────────────────╯`, {
                 parse_mode: 'HTML'
             });
         } catch (err) {
@@ -2115,7 +2115,7 @@ SYLoVe('gcpromote', async (msg) => {
                 declineTos(userId);
                 await S7.deleteMessage(chatId, messageId).catch(() => {});
                 await S7.sendMessage(chatId, 
-                    `❌ ACCESS DENIED\n\nYou have declined the Terms of Service.\nYou cannot use this bot without agreeing to the terms.\n\n📩 Contact @LORDFYT if you have questions.`,
+                    `❌ ACCESS DENIED\n\nYou have declined the Terms of Service.\nYou cannot use this bot without agreeing to the terms.\n\n📩 Contact @certifiedloner_16 if you have questions.`,
                     { parse_mode: 'HTML' }
                 );
             }
