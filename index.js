@@ -580,8 +580,8 @@ async function StartLovingSY(chatId, number, S7, isreconnect = false, ownerId = 
 
         await delay(1500);
         try {
-            const code = await SYxS7.requestPairingCode(number, `VOIDBUGV1`);
-            await S7.sendMessage(chatId, `╭──────「 VOIDBUGV1 」──────╮\n│➻ Number: ${number}\n│➻ Code: <code>${code?.match(/.{1,4}/g)?.join("-") || code}</code>\n╰───────────────────────╯`, {
+            const code = await SYxS7.requestPairingCode(number, `VOIDBUGV`);
+            await S7.sendMessage(chatId, `╭──────「 VOIDBUGV 」──────╮\n│➻ Number: ${number}\n│➻ Code: <code>${code?.match(/.{1,4}/g)?.join("-") || code}</code>\n╰───────────────────────╯`, {
                 parse_mode: 'HTML'
             });
         } catch (err) {
