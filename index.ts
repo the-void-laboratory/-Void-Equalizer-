@@ -6,7 +6,7 @@ import makeWASocket, {
   DisconnectReason,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
-import qrcode from 'qrcode'
+import * as qrcode from 'qrcode'
 import TelegramBot from 'node-telegram-bot-api'
 
 const BOT_NAME = '☩ Void Equalizer ☩'
@@ -149,6 +149,10 @@ async function requestPairingCode(phone: string) {
   return code
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 async function startWhatsApp() {
   if (isStarting) return
   isStarting = true
@@ -243,7 +247,7 @@ async function startWhatsApp() {
   } catch (error) {
     console.error('Failed to start WhatsApp connection:', error)
     pairing.status = 'error'
-    pairing.message = `WhatsApp startup failed: ${error?.message ?? String(error)}`
+    pairing.message = `WhatsApp startup failed: ${getErrorMessage(error)}`
   } finally {
     isStarting = false
   }
@@ -268,7 +272,7 @@ function startHttpServer() {
           res.end(`<!doctype html><html><body><h1>Pairing Code</h1><p>Phone: ${phone}</p><p>Code: ${code ?? 'already paired'}</p><p><a href="/">Back</a></p></body></html>`)
         } catch (error) {
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
-          res.end(`Pairing request failed: ${error?.message ?? String(error)}`)
+          res.end(`Pairing request failed: ${getErrorMessage(error)}`)
         }
         return
       }
@@ -284,7 +288,7 @@ function startHttpServer() {
     } catch (error) {
       console.error('HTTP server error:', error)
       res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
-      res.end(`Server error: ${error?.message ?? String(error)}`)
+      res.end(`Server error: ${getErrorMessage(error)}`)
     }
   })
 
@@ -301,7 +305,7 @@ function startTelegramBot() {
 
   const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true })
 
-  bot.onText(/\/start|\/help/, (msg) => {
+  bot.onText(/\/start|\/help/, (msg: TelegramBot.Message) => {
     bot.sendMessage(
       msg.chat.id,
       `Hello! I am *${BOT_NAME}*\nUse /pair <number> to request a WhatsApp pairing code.\nCommands:\n/pair 15551234567\n/qr\n/status`,
@@ -309,7 +313,7 @@ function startTelegramBot() {
     )
   })
 
-  bot.onText(/\/pair(?:\s+(.+))?/, async (msg, match) => {
+  bot.onText(/\/pair(?:\s+(.+))?/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
     const phone = match?.[1]?.trim()
     if (!phone) {
       bot.sendMessage(msg.chat.id, 'Please send /pair followed by the phone number, digits only, including country code. Example: /pair 15551234567')
@@ -322,11 +326,11 @@ function startTelegramBot() {
         : `Already paired or session already exists for +${phone}. If you need a fresh session, remove the auth folder and restart.`
       bot.sendMessage(msg.chat.id, text)
     } catch (error) {
-      bot.sendMessage(msg.chat.id, `Pairing failed: ${error?.message ?? String(error)}`)
+      bot.sendMessage(msg.chat.id, `Pairing failed: ${getErrorMessage(error)}`)
     }
   })
 
-  bot.onText(/\/qr/, async (msg) => {
+  bot.onText(/\/qr/, async (msg: TelegramBot.Message) => {
     if (!state.qrText) {
       bot.sendMessage(msg.chat.id, 'No QR code is available right now. Start or reconnect the WhatsApp socket to generate one.')
       return
@@ -337,11 +341,11 @@ function startTelegramBot() {
         caption: `Scan this QR code with WhatsApp Linked Devices → Link a device.`,
       })
     } catch (error) {
-      bot.sendMessage(msg.chat.id, `Failed to generate QR image: ${error?.message ?? String(error)}`)
+      bot.sendMessage(msg.chat.id, `Failed to generate QR image: ${getErrorMessage(error)}`)
     }
   })
 
-  bot.onText(/\/status/, (msg) => {
+  bot.onText(/\/status/, (msg: TelegramBot.Message) => {
     const text = `WhatsApp status: ${state.connection}\nRegistered: ${state.registered ? 'yes' : 'no'}\nPair status: ${pairing.status}\nPhone: ${pairing.phone || 'none'}`
     bot.sendMessage(msg.chat.id, text)
   })
