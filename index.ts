@@ -1,5 +1,7 @@
 import http from 'http'
 import process from 'process'
+import path from 'path'
+import { rm } from 'fs/promises'
 import makeWASocket, {
   useMultiFileAuthState,
   Browsers,
@@ -10,7 +12,7 @@ import * as qrcode from 'qrcode'
 import TelegramBot from 'node-telegram-bot-api'
 
 const BOT_NAME = '☩ Void Equalizer ☩'
-const AUTH_FOLDER = 'auth_info_baileys'
+const AUTH_FOLDER = path.resolve(process.cwd(), 'auth_info_baileys')
 const HTTP_PORT = Number(process.env.PORT || 3000)
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8937576130:AAEWjur7was2Ek4sKou2lMAbd7l1YAATBVU'
 
@@ -37,6 +39,62 @@ const pairing = {
 
 function formatDate(ts: number) {
   return ts ? new Date(ts).toLocaleString('en-US', { hour12: false }) : 'never'
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+async function resetWhatsAppSession() {
+  console.log('Resetting WhatsApp auth folder and restarting socket...')
+  if (retryTimer) {
+    clearTimeout(retryTimer)
+    retryTimer = null
+  }
+
+  if (sock) {
+    const anySock = sock as any
+    try {
+      await anySock?.logout?.()
+    } catch (error) {
+      console.warn('Could not call logout on WhatsApp socket:', getErrorMessage(error))
+    }
+    try {
+      anySock?.ws?.close?.()
+    } catch (error) {
+      console.warn('Could not close WhatsApp websocket:', getErrorMessage(error))
+    }
+    try {
+      sock.ev.removeAllListeners('connection.update')
+      sock.ev.removeAllListeners('messages.upsert')
+      sock.ev.removeAllListeners('creds.update')
+    } catch {
+      // ignore
+    }
+    sock = null
+  }
+
+  try {
+    await rm(AUTH_FOLDER, { recursive: true, force: true })
+    console.log('Auth folder removed:', AUTH_FOLDER)
+  } catch (error) {
+    console.warn('Unable to remove auth folder:', getErrorMessage(error))
+  }
+
+  state.connection = 'init'
+  state.registered = false
+  state.lastDisconnect = ''
+  state.qrText = ''
+  state.qrDataUrl = ''
+
+  pairing.phone = ''
+  pairing.code = ''
+  pairing.status = 'idle'
+  pairing.message = 'Session reset. Request a new pairing code or scan QR.'
+  pairing.updatedAt = Date.now()
+  pairing.expiresAt = 0
+
+  await startWhatsApp()
 }
 
 function getMessageText(message: any): string {
@@ -85,12 +143,16 @@ function renderHomePage(): string {
       <p><strong>Phone:</strong> ${pairing.phone || 'none'}</p>
       <p><strong>Status:</strong> ${pairing.status}</p>
       <p><strong>Last updated:</strong> ${formatDate(pairing.updatedAt)}</p>
-      ${pairing.code ? `<p><strong>Code:</strong> <code>${pairing.code}</code> (expires ${formatDate(pairing.expiresAt)})</p>` : ''}
+      ${pairing.code ? `<p><strong>Code:</strong> <code id="pairingCode">${pairing.code}</code> (expires ${formatDate(pairing.expiresAt)})</p>` : ''}
       <form action="/pair" method="get">
         <label for="phone">Request pairing code (country code + number, digits only):</label><br />
         <input id="phone" name="phone" type="text" placeholder="15551234567" required />
         <button type="submit">Request Pairing Code</button>
       </form>
+      <div style="margin-top:12px;">
+        <button type="button" id="copyPairingCode" ${pairing.code ? '' : 'disabled'}>Copy pairing code</button>
+        <button type="button" id="resetSession">Reset WhatsApp session</button>
+      </div>
     </div>
 
     <div class="box">
@@ -108,7 +170,27 @@ function renderHomePage(): string {
         <li><code>.info</code> — shows bot info.</li>
       </ul>
     </div>
-  </body>
+      document.getElementById('copyPairingCode')?.addEventListener('click', () => {
+        const codeEl = document.getElementById('pairingCode')
+        const code = codeEl?.textContent?.trim() || ''
+        if (!code) {
+          alert('No pairing code available to copy.')
+          return
+        }
+        navigator.clipboard.writeText(code).then(
+          () => alert('Pairing code copied to clipboard.'),
+          () => alert('Unable to copy pairing code. Please copy it manually.'),
+        )
+      })
+
+      document.getElementById('resetSession')?.addEventListener('click', () => {
+        if (confirm('Reset the WhatsApp session and force a fresh reconnect?')) {
+          window.location.href = '/reset'
+        }
+      })
+    })()
+  </script>
+</body>
 </html>`
 }
 
@@ -147,10 +229,6 @@ async function requestPairingCode(phone: string) {
   pairing.expiresAt = Date.now() + 10 * 60 * 1000
   pairing.updatedAt = Date.now()
   return code
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 async function startWhatsApp() {
@@ -274,6 +352,13 @@ function startHttpServer() {
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
           res.end(`Pairing request failed: ${getErrorMessage(error)}`)
         }
+        return
+      }
+
+      if (url.pathname === '/reset' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(`<!doctype html><html><body><h1>Resetting session</h1><p>The WhatsApp session is being reset. Refresh the home page in a moment.</p><p><a href="/">Back</a></p></body></html>`)
+        resetWhatsAppSession().catch((error) => console.error('Reset failed:', getErrorMessage(error)))
         return
       }
 
