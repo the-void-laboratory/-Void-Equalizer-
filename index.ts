@@ -14,7 +14,7 @@ import TelegramBot from 'node-telegram-bot-api'
 const BOT_NAME = '☩ Void Equalizer ☩'
 const AUTH_FOLDER = path.resolve(process.cwd(), 'auth_info_baileys')
 const HTTP_PORT = Number(process.env.PORT || 3000)
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8937576130:AAEWjur7was2Ek4sKou2lMAbd7l1YAATBVU'
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8937576130:AAF5iNwoC2fgsxOzqehkIZz1NpWJrwkE1V8'
 
 let sock: ReturnType<typeof makeWASocket> | null = null
 let isStarting = false
