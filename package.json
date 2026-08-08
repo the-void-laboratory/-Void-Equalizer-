@@ -1,17 +1,19 @@
-
 {
-  "name": "XeonBot By SABIR7718",
-  "author": "SABIR7718",
+  "name": "void-equalizer-bot",
+  "version": "1.0.0",
+  "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "ts-node index.ts"
   },
   "dependencies": {
-    "@sabir7718/log": "latest",
-    "@whiskeysockets/baileys": "^6.7.16",
-    "chalk": "^5.6.2",
-    "crypto": "^1.0.1",
-    "node-cache": "^5.1.2",
-    "node-telegram-bot-api": "^0.67.0",
-    "pino": "^10.3.0"
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "node-telegram-bot-api": "^0.61.0",
+    "qrcode": "^1.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.5.4"
   }
 }
